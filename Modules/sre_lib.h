@@ -542,6 +542,38 @@ typedef struct {
     int toplevel;
 } SRE(match_context);
 
+typedef struct {
+    const SRE_CODE* pattern;
+    const SRE_CHAR* ptr;
+} SRE(simpos_key_t);
+
+typedef struct {
+    SRE(simpos_key_t) key;
+    UT_hash_handle hh;
+} SRE(simpos_t);
+
+LOCAL(void)
+SRE(simpos_record)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SRE_CHAR *ptr) 
+{
+    SRE(simpos_t) *s;
+    s = (SRE(simpos_t)*) PyObject_Malloc(sizeof(SRE(simpos_t)));
+    if (!s) { return; }
+    memset(s, 0, sizeof(SRE(simpos_t)));
+    s->key.pattern = pattern; s->key.ptr = ptr;
+    HASH_ADD(hh, *memo_table, key, sizeof(SRE(simpos_key_t)), s);
+}
+
+LOCAL(int)
+SRE(simpos_has_visited)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SRE_CHAR *ptr) 
+{
+    SRE(simpos_t) s = { {.pattern = pattern, .ptr = ptr} };
+    SRE(simpos_t) *findp;
+
+    HASH_FIND(hh, *memo_table, &s.key, sizeof(SRE(simpos_key_t)), findp);
+
+    return findp ? 1 : 0;
+}
+
 /* check if string matches the given pattern.  returns <0 for
    error, 0 for failure, and 1 for success */
 LOCAL(Py_ssize_t)
@@ -555,6 +587,7 @@ SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel)
 
     SRE(match_context)* ctx;
     SRE(match_context)* nextctx;
+    SRE(simpos_t)* simpos_memo_table = NULL;
 
     TRACE(("|%p|%p|ENTER\n", pattern, state->ptr));
 
@@ -590,6 +623,12 @@ entrance:
         case SRE_OP_MARK:
             /* set mark */
             /* <MARK> <gid> */
+            if (!SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr)) {
+                SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
+            } else {
+                RETURN_FAILURE;
+            }
+
             TRACE(("|%p|%p|MARK %d\n", ctx->pattern,
                    ctx->ptr, ctx->pattern[0]));
             i = ctx->pattern[0];

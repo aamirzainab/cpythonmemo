@@ -44,6 +44,7 @@ static const char copyright[] =
 #include "pycore_long.h"          // _PyLong_GetZero()
 #include "pycore_moduleobject.h"  // _PyModule_GetState()
 #include "structmember.h"         // PyMemberDef
+#include "uthash.h"
 
 #include "sre.h"
 
@@ -59,7 +60,8 @@ static const char copyright[] =
 #define SRE_PY_MODULE "re"
 
 /* defining this one enables tracing */
-#undef VERBOSE
+//#undef VERBOSE
+#define VERBOSE
 
 /* -------------------------------------------------------------------- */
 
