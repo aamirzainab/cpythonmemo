@@ -873,6 +873,10 @@ entrance:
 
             /* <REPEAT_ONE> <skip> <1=min> <2=max> item <SUCCESS> tail */
 
+            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
+                RETURN_FAILURE;
+            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
+
             TRACE(("|%p|%p|REPEAT_ONE %d %d\n", ctx->pattern, ctx->ptr,
                    ctx->pattern[1], ctx->pattern[2]));
 
@@ -885,6 +889,9 @@ entrance:
             RETURN_ON_ERROR(ret);
             DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
             ctx->count = ret;
+            for (; ret > 0; --ret) {
+                SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr + ret);
+            }
             ctx->ptr += ctx->count;
 
             /* when we arrive here, count contains the number of
@@ -1347,8 +1354,11 @@ exit:
     ctx_pos = ctx->last_ctx_pos;
     jump = ctx->jump;
     DATA_POP_DISCARD(ctx);
-    if (ctx_pos == -1)
+    if (ctx_pos == -1) {
+        TRACE(("memory overhead of memo table = %ld bytes\n", 
+                    HASH_OVERHEAD(hh, simpos_memo_table)));
         return ret;
+    }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
 
     switch (jump) {
