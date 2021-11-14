@@ -1089,6 +1089,7 @@ entrance:
                 }
                 ctx->u.rep->count = ctx->count-1;
                 state->ptr = ctx->ptr;
+                SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
                 RETURN_FAILURE;
             }
 
