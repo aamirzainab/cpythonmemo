@@ -552,18 +552,6 @@ typedef struct {
     UT_hash_handle hh;
 } SRE(simpos_t);
 
-LOCAL(void)
-SRE(simpos_record)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SRE_CHAR *ptr) 
-{
-    SRE(simpos_t) *s;
-    s = (SRE(simpos_t)*) PyObject_Malloc(sizeof(SRE(simpos_t)));
-    if (!s) { return; }
-    memset(s, 0, sizeof(SRE(simpos_t)));
-    s->key.pattern = pattern; s->key.ptr = ptr;
-    HASH_ADD(hh, *memo_table, key, sizeof(SRE(simpos_key_t)), s);
-    TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
-}
-
 LOCAL(int)
 SRE(simpos_has_visited)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SRE_CHAR *ptr) 
 {
@@ -574,6 +562,23 @@ SRE(simpos_has_visited)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, con
     TRACE(("|%p|%p|simpos %sFOUND in memo table\n", pattern, ptr,
                 findp ? "": "NOT "));
     return findp != NULL;
+}
+
+LOCAL(void)
+SRE(simpos_record)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SRE_CHAR *ptr)
+{
+    if (SRE(simpos_has_visited)(memo_table, pattern, ptr)) {
+        TRACE(("|%p|%p|simpos already in memo table\n", pattern, ptr));
+        return;
+    }
+
+    SRE(simpos_t) *s;
+    s = (SRE(simpos_t)*) PyObject_Malloc(sizeof(SRE(simpos_t)));
+    if (!s) { return; }
+    memset(s, 0, sizeof(SRE(simpos_t)));
+    s->key.pattern = pattern; s->key.ptr = ptr;
+    HASH_ADD(hh, *memo_table, key, sizeof(SRE(simpos_key_t)), s);
+    TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
 }
 
 /* check if string matches the given pattern.  returns <0 for
