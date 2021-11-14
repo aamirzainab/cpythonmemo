@@ -508,6 +508,7 @@ do { \
 #define JUMP_BRANCH          11
 #define JUMP_ASSERT          12
 #define JUMP_ASSERT_NOT      13
+#define JUMP_MARK            14
 
 #define DO_JUMPX(jumpvalue, jumplabel, nextpattern, toplevel_) \
     DATA_ALLOC(SRE(match_context), nextctx); \
@@ -561,6 +562,7 @@ SRE(simpos_record)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, const SR
     memset(s, 0, sizeof(SRE(simpos_t)));
     s->key.pattern = pattern; s->key.ptr = ptr;
     HASH_ADD(hh, *memo_table, key, sizeof(SRE(simpos_key_t)), s);
+    TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
 }
 
 LOCAL(int)
@@ -570,8 +572,9 @@ SRE(simpos_has_visited)(SRE(simpos_t) **memo_table, const SRE_CODE *pattern, con
     SRE(simpos_t) *findp;
 
     HASH_FIND(hh, *memo_table, &s.key, sizeof(SRE(simpos_key_t)), findp);
-
-    return findp ? 1 : 0;
+    TRACE(("|%p|%p|simpos %sFOUND in memo table\n", pattern, ptr,
+                findp ? "": "NOT "));
+    return findp != NULL;
 }
 
 /* check if string matches the given pattern.  returns <0 for
@@ -623,14 +626,12 @@ entrance:
         case SRE_OP_MARK:
             /* set mark */
             /* <MARK> <gid> */
-            if (!SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr)) {
-                SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
-            } else {
-                RETURN_FAILURE;
-            }
-
             TRACE(("|%p|%p|MARK %d\n", ctx->pattern,
                    ctx->ptr, ctx->pattern[0]));
+            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
+                RETURN_FAILURE;
+            //SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
+
             i = ctx->pattern[0];
             if (i & 1)
                 state->lastindex = i/2 + 1;
@@ -645,7 +646,15 @@ entrance:
                 state->lastmark = i;
             }
             state->mark[i] = ctx->ptr;
-            ctx->pattern++;
+            //ctx->pattern++;
+            state->ptr = ctx->ptr;
+            DO_JUMP(JUMP_MARK, jump_mark, ctx->pattern+1);
+            if (ret) {
+                RETURN_ON_ERROR(ret);
+                RETURN_SUCCESS;
+            }
+            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
+            RETURN_FAILURE;
             break;
 
         case SRE_OP_LITERAL:
@@ -1401,6 +1410,9 @@ exit:
         case JUMP_ASSERT_NOT:
             TRACE(("|%p|%p|JUMP_ASSERT_NOT\n", ctx->pattern, ctx->ptr));
             goto jump_assert_not;
+        case JUMP_MARK:
+            TRACE(("|%p|%p|JUMP_MARK\n", ctx->pattern, ctx->ptr));
+            goto jump_mark;
         case JUMP_NONE:
             TRACE(("|%p|%p|RETURN %zd\n", ctx->pattern,
                    ctx->ptr, ret));
