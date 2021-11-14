@@ -626,11 +626,9 @@ entrance:
         case SRE_OP_MARK:
             /* set mark */
             /* <MARK> <gid> */
+
             TRACE(("|%p|%p|MARK %d\n", ctx->pattern,
                    ctx->ptr, ctx->pattern[0]));
-            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
-                RETURN_FAILURE;
-            //SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
 
             i = ctx->pattern[0];
             if (i & 1)
@@ -646,14 +644,8 @@ entrance:
                 state->lastmark = i;
             }
             state->mark[i] = ctx->ptr;
-            //ctx->pattern++;
+            ctx->pattern++;
             state->ptr = ctx->ptr;
-            DO_JUMP(JUMP_MARK, jump_mark, ctx->pattern+1);
-            if (ret) {
-                RETURN_ON_ERROR(ret);
-                RETURN_SUCCESS;
-            }
-            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
             RETURN_FAILURE;
             break;
 
@@ -1070,6 +1062,9 @@ entrance:
             /* FIXME: we probably need to deal with zero-width
                matches in here... */
 
+            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
+                RETURN_FAILURE;
+            
             ctx->u.rep = state->repeat;
             if (!ctx->u.rep)
                 RETURN_ERROR(SRE_ERROR_STATE);
@@ -1127,6 +1122,7 @@ entrance:
             RETURN_ON_SUCCESS(ret);
             state->repeat = ctx->u.rep;
             state->ptr = ctx->ptr;
+            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
             RETURN_FAILURE;
 
         case SRE_OP_MIN_UNTIL:
