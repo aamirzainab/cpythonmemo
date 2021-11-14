@@ -508,7 +508,6 @@ do { \
 #define JUMP_BRANCH          11
 #define JUMP_ASSERT          12
 #define JUMP_ASSERT_NOT      13
-#define JUMP_MARK            14
 
 #define DO_JUMPX(jumpvalue, jumplabel, nextpattern, toplevel_) \
     DATA_ALLOC(SRE(match_context), nextctx); \
@@ -645,8 +644,6 @@ entrance:
             }
             state->mark[i] = ctx->ptr;
             ctx->pattern++;
-            state->ptr = ctx->ptr;
-            RETURN_FAILURE;
             break;
 
         case SRE_OP_LITERAL:
@@ -1406,9 +1403,6 @@ exit:
         case JUMP_ASSERT_NOT:
             TRACE(("|%p|%p|JUMP_ASSERT_NOT\n", ctx->pattern, ctx->ptr));
             goto jump_assert_not;
-        case JUMP_MARK:
-            TRACE(("|%p|%p|JUMP_MARK\n", ctx->pattern, ctx->ptr));
-            goto jump_mark;
         case JUMP_NONE:
             TRACE(("|%p|%p|RETURN %zd\n", ctx->pattern,
                    ctx->ptr, ret));
