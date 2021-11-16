@@ -240,6 +240,15 @@ SRE(simpos_record)(SRE(simpos_t) **memo_table,
     TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
 }
 
+LOCAL(void)
+SRE(free_simpos_memo_table)(SRE(simpos_t) **memo_table) {
+    SRE(simpos_t) *cur, *tmp;
+    HASH_ITER(hh, *memo_table, cur, tmp) {
+        HASH_DEL(*memo_table, cur);
+        PyObject_Free(cur);
+    }
+}
+
 LOCAL(Py_ssize_t) SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel);
 
 LOCAL(Py_ssize_t)
@@ -1378,6 +1387,7 @@ exit:
     if (ctx_pos == -1) {
         TRACE(("memory overhead of memo table = %ld bytes\n",
                HASH_OVERHEAD(hh, simpos_memo_table)));
+        SRE(free_simpos_memo_table)(&simpos_memo_table);
         return ret;
     }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
