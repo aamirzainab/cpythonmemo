@@ -453,7 +453,13 @@ SRE(info)(SRE_STATE* state, const SRE_CODE* pattern)
     } while (0)
 
 #define RETURN_ERROR(i) do { return i; } while(0)
-#define RETURN_FAILURE do { ret = 0; goto exit; } while(0)
+#define RETURN_FAILURE_NO_MEMO do { ret = 0; goto exit; } while(0)
+#define RETURN_FAILURE \
+    do { \
+        if (ctx->should_memo) \
+            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr); \
+        ret = 0; goto exit; \
+    } while(0)
 #define RETURN_SUCCESS do { ret = 1; goto exit; } while(0)
 
 #define RETURN_ON_ERROR(i) \
@@ -592,6 +598,7 @@ typedef struct {
         SRE_REPEAT* rep;
     } u;
     int toplevel;
+    int should_memo;
 } SRE(match_context);
 
 /* check if string matches the given pattern.  returns <0 for
@@ -639,15 +646,25 @@ entrance:
         if ((0 == (sigcount & 0xfff)) && PyErr_CheckSignals())
             RETURN_ERROR(SRE_ERROR_INTERRUPTED);
 
+        if (ctx->pattern[0] == SRE_OP_MEMO) {
+            /* this pattern should be memoized */
+            /* <MEMO> <opcode> ... */
+            TRACE(("|%p|%p|MEMO\n", ctx->pattern+2, ctx->ptr));
+            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern+2, ctx->ptr))
+                RETURN_FAILURE_NO_MEMO;
+            ctx->pattern++;
+            ctx->should_memo = 1;
+        } else {
+            ctx->should_memo = 0;
+        }
+
         switch (*ctx->pattern++) {
 
         case SRE_OP_MARK:
             /* set mark */
             /* <MARK> <gid> */
-
             TRACE(("|%p|%p|MARK %d\n", ctx->pattern,
                    ctx->ptr, ctx->pattern[0]));
-
             i = ctx->pattern[0];
             if (i & 1)
                 state->lastindex = i/2 + 1;
@@ -890,9 +907,6 @@ entrance:
 
             /* <REPEAT_ONE> <skip> <1=min> <2=max> item <SUCCESS> tail */
 
-            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
-                RETURN_FAILURE;
-
             TRACE(("|%p|%p|REPEAT_ONE %d %d\n", ctx->pattern, ctx->ptr,
                    ctx->pattern[1], ctx->pattern[2]));
 
@@ -1086,9 +1100,6 @@ entrance:
             /* FIXME: we probably need to deal with zero-width
                matches in here... */
 
-            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
-                RETURN_FAILURE;
-
             ctx->u.rep = state->repeat;
             if (!ctx->u.rep)
                 RETURN_ERROR(SRE_ERROR_STATE);
@@ -1111,7 +1122,6 @@ entrance:
                 }
                 ctx->u.rep->count = ctx->count-1;
                 state->ptr = ctx->ptr;
-                SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
                 RETURN_FAILURE;
             }
 
@@ -1147,7 +1157,6 @@ entrance:
             RETURN_ON_SUCCESS(ret);
             state->repeat = ctx->u.rep;
             state->ptr = ctx->ptr;
-            SRE(simpos_record)(&simpos_memo_table, ctx->pattern, ctx->ptr);
             RETURN_FAILURE;
 
         case SRE_OP_MIN_UNTIL:

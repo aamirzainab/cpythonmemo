@@ -60,8 +60,8 @@ static const char copyright[] =
 #define SRE_PY_MODULE "re"
 
 /* defining this one enables tracing */
-//#undef VERBOSE
-#define VERBOSE
+#undef VERBOSE
+//#define VERBOSE
 
 /* -------------------------------------------------------------------- */
 
@@ -1655,6 +1655,10 @@ _validate_inner(SRE_CODE *code, SRE_CODE *end, Py_ssize_t groups)
         GET_OP;
         switch (op) {
 
+        case SRE_OP_MEMO:
+            /* Instruction prefix */
+            break;
+
         case SRE_OP_MARK:
             /* We don't check whether marks are properly nested; the
                sre_match() code is robust even if they don't, and the worst
@@ -1841,6 +1845,8 @@ _validate_inner(SRE_CODE *code, SRE_CODE *end, Py_ssize_t groups)
                     FAIL;
                 code += skip-3;
                 GET_OP;
+                if (op == SRE_OP_MEMO)
+                    GET_OP;
                 if (op != SRE_OP_MAX_UNTIL && op != SRE_OP_MIN_UNTIL)
                     FAIL;
             }

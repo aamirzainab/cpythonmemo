@@ -135,9 +135,14 @@ def _compile(code, pattern, flags):
             else:
                 emit(ANY)
         elif op in REPEATING_CODES:
+            def emit_MEMO():
+                if code[-1] is not MEMO:
+                    emit(MEMO)
+
             if flags & SRE_FLAG_TEMPLATE:
                 raise error("internal: unsupported template operator %r" % (op,))
             if _simple(av[2]):
+                emit_MEMO()
                 if op is MAX_REPEAT:
                     emit(REPEAT_ONE)
                 else:
@@ -155,6 +160,7 @@ def _compile(code, pattern, flags):
                 emit(av[1])
                 _compile(code, av[2], flags)
                 code[skip] = _len(code) - skip
+                emit_MEMO()
                 if op is MAX_REPEAT:
                     emit(MAX_UNTIL)
                 else:
@@ -213,6 +219,7 @@ def _compile(code, pattern, flags):
             emit(FAILURE) # end of branch
             for tail in tail:
                 code[tail] = _len(code) - tail
+            emit(MEMO)
         elif op is CATEGORY:
             emit(op)
             if flags & SRE_FLAG_LOCALE:
@@ -642,7 +649,7 @@ def dis(code):
             i += 1
             op = OPCODES[op]
             if op in (SUCCESS, FAILURE, ANY, ANY_ALL,
-                      MAX_UNTIL, MIN_UNTIL, NEGATE):
+                      MAX_UNTIL, MIN_UNTIL, NEGATE, MEMO):
                 print_(op)
             elif op in (LITERAL, NOT_LITERAL,
                         LITERAL_IGNORE, NOT_LITERAL_IGNORE,

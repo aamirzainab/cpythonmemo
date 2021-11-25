@@ -114,6 +114,8 @@ OPCODES = _makecodes("""
     NOT_LITERAL_UNI_IGNORE
     RANGE_UNI_IGNORE
 
+    MEMO
+
     MIN_REPEAT MAX_REPEAT
 """)
 del OPCODES[-2:] # remove MIN_REPEAT and MAX_REPEAT
