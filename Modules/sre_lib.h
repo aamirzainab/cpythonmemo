@@ -299,7 +299,8 @@ SRE(count)(SRE_STATE* state, const SRE_CODE* pattern, Py_ssize_t maxcount,
         else
 #endif
         while (ptr < end && *ptr == c &&
-               !SRE(simpos_has_visited)(memo_table, pattern-3, ptr))
+               !(memo_table && SRE(simpos_has_visited)(memo_table,
+                                   pattern-3, ptr)))
             ptr++;
         break;
 
@@ -650,7 +651,8 @@ entrance:
             /* this pattern should be memoized */
             /* <MEMO> <opcode> ... */
             TRACE(("|%p|%p|MEMO\n", ctx->pattern+2, ctx->ptr));
-            if (SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern+2, ctx->ptr))
+            if (ctx->pattern[1] != SRE_OP_MIN_REPEAT_ONE &&
+                SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern+2, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
             ctx->pattern++;
             ctx->should_memo = 1;
@@ -1009,7 +1011,7 @@ entrance:
                    ctx->pattern[1], ctx->pattern[2]));
 
             if ((Py_ssize_t) ctx->pattern[1] > end - ctx->ptr)
-                RETURN_FAILURE; /* cannot match */
+                RETURN_FAILURE_NO_MEMO; /* cannot match */
 
             state->ptr = ctx->ptr;
 
@@ -1017,12 +1019,12 @@ entrance:
                 ctx->count = 0;
             else {
                 /* count using pattern min as the maximum */
-                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], &simpos_memo_table);
+                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], NULL);
                 RETURN_ON_ERROR(ret);
                 DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
                 if (ret < (Py_ssize_t) ctx->pattern[1])
                     /* didn't match minimum number of times */
-                    RETURN_FAILURE;
+                    RETURN_FAILURE_NO_MEMO;
                 /* advance past minimum matches of repeat */
                 ctx->count = ret;
                 ctx->ptr += ctx->count;
@@ -1040,8 +1042,13 @@ entrance:
             } else {
                 /* general case */
                 LASTMARK_SAVE();
+                orig_ptr = ctx->ptr;
                 while ((Py_ssize_t)ctx->pattern[2] == SRE_MAXREPEAT
                        || ctx->count <= (Py_ssize_t)ctx->pattern[2]) {
+                    if (ctx->should_memo &&
+                        SRE(simpos_has_visited)(&simpos_memo_table,
+                                                ctx->pattern, ctx->ptr))
+                        RETURN_FAILURE_NO_MEMO;
                     state->ptr = ctx->ptr;
                     DO_JUMP(JUMP_MIN_REPEAT_ONE,jump_min_repeat_one,
                             ctx->pattern+ctx->pattern[0]);
@@ -1050,7 +1057,7 @@ entrance:
                         RETURN_SUCCESS;
                     }
                     state->ptr = ctx->ptr;
-                    ret = SRE(count)(state, ctx->pattern+3, 1, &simpos_memo_table);
+                    ret = SRE(count)(state, ctx->pattern+3, 1, NULL);
                     RETURN_ON_ERROR(ret);
                     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
                     if (ret == 0)
@@ -1061,7 +1068,12 @@ entrance:
                     LASTMARK_RESTORE();
                 }
             }
-            RETURN_FAILURE;
+            if (ctx->should_memo) {
+                for (const SRE_CHAR *p = orig_ptr; p <= ctx->ptr; ++p) {
+                    SRE(simpos_record)(&simpos_memo_table, ctx->pattern, p);
+                }
+            }
+            RETURN_FAILURE_NO_MEMO;
 
         case SRE_OP_REPEAT:
             /* create repeat context.  all the hard work is done
