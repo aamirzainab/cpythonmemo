@@ -653,6 +653,8 @@ entrance:
             TRACE(("|%p|%p|MEMO\n", ctx->pattern+2, ctx->ptr));
             if (ctx->pattern[1] != SRE_OP_MIN_REPEAT_ONE &&
                 ctx->pattern[1] != SRE_OP_REPEAT_ONE &&
+                ctx->pattern[1] != SRE_OP_MAX_UNTIL &&
+                ctx->pattern[1] != SRE_OP_MIN_UNTIL &&
                 SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern+2, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
             ctx->pattern++;
@@ -1147,8 +1149,12 @@ entrance:
                 }
                 ctx->u.rep->count = ctx->count-1;
                 state->ptr = ctx->ptr;
-                RETURN_FAILURE;
+                RETURN_FAILURE_NO_MEMO;
             }
+
+            if (ctx->should_memo &&
+                SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
+                RETURN_FAILURE_NO_MEMO;
 
             if ((ctx->count < (Py_ssize_t) ctx->u.rep->pattern[2] ||
                 ctx->u.rep->pattern[2] == SRE_MAXREPEAT) &&
@@ -1210,8 +1216,12 @@ entrance:
                 }
                 ctx->u.rep->count = ctx->count-1;
                 state->ptr = ctx->ptr;
-                RETURN_FAILURE;
+                RETURN_FAILURE_NO_MEMO;
             }
+
+            if (ctx->should_memo &&
+                SRE(simpos_has_visited)(&simpos_memo_table, ctx->pattern, ctx->ptr))
+                RETURN_FAILURE_NO_MEMO;
 
             LASTMARK_SAVE();
 
