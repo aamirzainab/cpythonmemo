@@ -12,6 +12,7 @@
 #define SRE_INCLUDED
 
 #include "sre_constants.h"
+#include "sre_rle.h"
 
 /* size of a code word (must be unsigned short or larger, and
    large enough to hold a UCS4 character) */
@@ -93,11 +94,12 @@ typedef struct {
 
 typedef struct {
     const SRE_CODE* pattern;
-    Py_ssize_t woffset;
+    //Py_ssize_t woffset;
 } simpos_key_t;
 
 typedef struct {
     simpos_key_t key;
+    RLEVector *rle_vec;
     UT_hash_handle hh;
 } simpos_t;
 

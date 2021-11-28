@@ -203,6 +203,7 @@ LOCAL(int)
 SRE(simpos_has_visited)(SRE_STATE *state, simpos_t **memo_table,
                         const SRE_CODE *pattern, const SRE_CHAR *ptr)
 {
+#if 0
     simpos_t s = { {
         .pattern = pattern,
         .woffset = ptr - (const SRE_CHAR *)state->start } };
@@ -212,6 +213,14 @@ SRE(simpos_has_visited)(SRE_STATE *state, simpos_t **memo_table,
     TRACE(("|%p|%p|simpos %sFOUND in memo table\n", pattern, ptr,
            findp ? "": "NOT "));
     return findp != NULL;
+#else
+    simpos_t s = { { .pattern = pattern } };
+    simpos_t *findp;
+
+    HASH_FIND(hh, *memo_table, &s.key, sizeof(simpos_key_t), findp);
+    if (!findp) return 0;
+    return RLEVector_get(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
+#endif
 }
 
 LOCAL(void)
@@ -223,13 +232,30 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
         return;
     }
 
-   simpos_t *s;
+#if 0
+    simpos_t *s;
     s = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
     if (!s) { return; }
     memset(s, 0, sizeof(simpos_t));
     s->key.pattern = pattern;
     s->key.woffset = ptr - (const SRE_CHAR *)state->start;
     HASH_ADD(hh, *memo_table, key, sizeof(simpos_key_t), s);
+#else
+    simpos_t s = { { .pattern = pattern } };
+    simpos_t *findp;
+
+    HASH_FIND(hh, *memo_table, &s.key, sizeof(simpos_key_t), findp);
+    if (!findp) {
+        findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
+        if (!findp) return;
+        memset(findp, 0, sizeof(simpos_t));
+        findp->key.pattern = pattern;
+        findp->rle_vec = RLEVector_create(1, 0);
+        HASH_ADD(hh, *memo_table, key, sizeof(simpos_key_t), findp);
+    }
+    RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
+#endif
+
     TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
 }
 
@@ -238,6 +264,11 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table) {
     simpos_t *cur, *tmp;
     HASH_ITER(hh, *memo_table, cur, tmp) {
         HASH_DEL(*memo_table, cur);
+#if 1
+        TRACE(("|%p|maximum observed # of runs = %d\n",
+               cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec)));
+        RLEVector_destroy(cur->rle_vec);
+#endif
         PyObject_Free(cur);
     }
 }

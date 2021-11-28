@@ -113,7 +113,7 @@ _io -I$(srcdir)/Modules/_io _io/_iomodule.c _io/iobase.c _io/fileio.c _io/bytesi
 _locale _localemodule.c
 _operator _operator.c
 _signal signalmodule.c
-_sre _sre.c
+_sre _sre.c sre_rle.c avl_tree.c
 _stat _stat.c
 _symtable symtablemodule.c
 _thread _threadmodule.c

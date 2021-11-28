@@ -60,8 +60,8 @@ static const char copyright[] =
 #define SRE_PY_MODULE "re"
 
 /* defining this one enables tracing */
-#undef VERBOSE
-//#define VERBOSE
+//#undef VERBOSE
+#define VERBOSE
 
 /* -------------------------------------------------------------------- */
 
