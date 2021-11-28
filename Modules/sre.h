@@ -91,4 +91,14 @@ typedef struct {
     SRE_STATE state;
 } ScannerObject;
 
+typedef struct {
+    const SRE_CODE* pattern;
+    Py_ssize_t woffset;
+} simpos_key_t;
+
+typedef struct {
+    simpos_key_t key;
+    UT_hash_handle hh;
+} simpos_t;
+
 #endif
