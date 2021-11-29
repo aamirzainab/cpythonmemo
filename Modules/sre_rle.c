@@ -441,7 +441,9 @@ static void _RLEVector_addRun(RLEVector *vec, RLENode *node)
 {
     logMsg(LOG_DEBUG, "Adding run (%d,%d,%llu)", node->offset, node->nRuns, node->run);
 
-    assert(avl_tree_insert(&vec->root, &node->node, RLENode_avl_tree_cmp) == NULL);
+    struct avl_tree_node *insert =
+        avl_tree_insert(&vec->root, &node->node, RLENode_avl_tree_cmp);
+    assert(insert == NULL);
     vec->currNEntries++;
     if (vec->mostNEntries < vec->currNEntries) {
         vec->mostNEntries = vec->currNEntries;
