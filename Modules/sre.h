@@ -94,12 +94,16 @@ typedef struct {
 
 typedef struct {
     const SRE_CODE* pattern;
-    //Py_ssize_t woffset;
+#if 0
+    Py_ssize_t woffset;
+#endif
 } simpos_key_t;
 
 typedef struct {
     simpos_key_t key;
+#if 1
     RLEVector *rle_vec;
+#endif
     UT_hash_handle hh;
 } simpos_t;
 
