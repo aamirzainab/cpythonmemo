@@ -427,6 +427,8 @@ static void _RLEVector_addRun(RLEVector *vec, RLENode *node)
     struct avl_tree_node *insert =
         avl_tree_insert(&vec->root, &node->node, RLENode_avl_tree_cmp);
     assert(insert == NULL);
+    (void)insert; // make release build happy
+
     vec->currNEntries++;
     if (vec->mostNEntries < vec->currNEntries) {
         vec->mostNEntries = vec->currNEntries;
