@@ -81,7 +81,7 @@ static const char copyright[] =
 #define SRE_ERROR_MEMORY -9 /* out of memory */
 #define SRE_ERROR_INTERRUPTED -10 /* signal handler raised exception */
 
-#if defined(VERBOSE)
+#if defined(VERBOSE) && LOG_THRESHOLD >= LOG_VERBOSE
 #define TRACE(v) printf v
 #else
 #define TRACE(v)

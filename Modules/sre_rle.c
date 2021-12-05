@@ -23,30 +23,13 @@
 
 #include "Python.h"
 
+#include "sre.h"
 #include "sre_rle.h"
-//#include "log.h"
 #include "avl_tree.h"
 
 //#include <assert.h>
 //#include <stdlib.h>
 //#include <stdio.h>
-
-#define LOG_SILENT     0
-#define LOG_ERROR      1
-#define LOG_WARN       2
-#define LOG_INFO       3
-#define LOG_VERBOSE    4
-#define LOG_DEBUG      5
-#define LOG_MAX        LOG_DEBUG
-#define LOG_MAX_VERBOSITY LOG_SILENT
-
-#define logMsg(level, msg, ...) \
-    do { \
-        if (level <= LOG_MAX_VERBOSITY) { \
-            printf("[%s] " msg "\n", #level, ##__VA_ARGS__); \
-        } \
-    } while (0)
-
 
 #define BIT_ISSET(x, i) ( ( (x) & ( (1) << (i) ) ) != 0 )
 #define BIT_SET(x, i) ( (x) | ( (1) << (i) ) ) /* Returns with bit set */

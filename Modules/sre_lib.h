@@ -232,6 +232,7 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
         return;
     }
 
+    TRACE(("|%p|%p|adding simpos to memo table\n", pattern, ptr));
 #if 0
     simpos_t *s;
     s = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
@@ -255,8 +256,6 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
     }
     RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
 #endif
-
-    TRACE(("|%p|%p|simpos added to memo table\n", pattern, ptr));
 }
 
 LOCAL(void)
@@ -265,8 +264,8 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table) {
     HASH_ITER(hh, *memo_table, cur, tmp) {
         HASH_DEL(*memo_table, cur);
 #if 1
-        TRACE(("|%p|maximum observed # of runs = %d\n",
-               cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec)));
+        logMsg(LOG_INFO, "|%p|maximum observed # of runs = %d",
+               cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
         RLEVector_destroy(cur->rle_vec);
 #endif
         PyObject_Free(cur);
@@ -1459,8 +1458,8 @@ exit:
     jump = ctx->jump;
     DATA_POP_DISCARD(ctx);
     if (ctx_pos == -1) {
-        TRACE(("memory overhead of memo table = %ld bytes\n",
-               HASH_OVERHEAD(hh, simpos_memo_table)));
+        //TRACE(("memory overhead of memo table = %ld bytes\n",
+        //       HASH_OVERHEAD(hh, simpos_memo_table)));
         SRE(free_simpos_memo_table)(&simpos_memo_table);
         return ret;
     }

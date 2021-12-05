@@ -12,6 +12,7 @@
 #define SRE_INCLUDED
 
 #include "sre_constants.h"
+#include "uthash.h"
 #include "sre_rle.h"
 
 /* size of a code word (must be unsigned short or larger, and
@@ -106,5 +107,20 @@ typedef struct {
 #endif
     UT_hash_handle hh;
 } simpos_t;
+
+#define LOG_SILENT     0
+#define LOG_ERROR      1
+#define LOG_WARN       2
+#define LOG_INFO       3
+#define LOG_VERBOSE    4
+#define LOG_DEBUG      5
+#define LOG_THRESHOLD  LOG_SILENT
+
+#define logMsg(level, msg, ...) \
+    do { \
+        if (level <= LOG_THRESHOLD) { \
+            printf("[%s] " msg "\n", #level, ##__VA_ARGS__); \
+        } \
+    } while (0)
 
 #endif
