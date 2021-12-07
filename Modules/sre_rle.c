@@ -471,7 +471,8 @@ int
 RLEVector_maxBytes(RLEVector *vec)
 {
     return sizeof(RLEVector) /* Internal overhead */ \
-        + sizeof(RLENode) * RLEVector_maxObservedSize(vec) /* Cost per node */ \
+        + (sizeof(RLENode) + BITS_TO_LONGS(vec->nBitsInRun) * sizeof(unsigned long)) *
+          RLEVector_maxObservedSize(vec) /* Cost per node */ \
         ;
 }
 
