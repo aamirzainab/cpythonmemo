@@ -31,11 +31,58 @@
 //#include <stdlib.h>
 //#include <stdio.h>
 
-#define BIT_ISSET(x, i) ( ( (x) & ( (1) << (i) ) ) != 0 )
-#define BIT_SET(x, i) ( (x) | ( (1) << (i) ) ) /* Returns with bit set */
+#define BITS_PER_LONG       (sizeof(long) * 8)
+#define BIT_WORD(nr)        ((nr) / BITS_PER_LONG)
+#define BIT_MASK(nr)        (1UL << ((nr) % BITS_PER_LONG))
+#define BITMAP_LAST_WORD_MASK(nbits) (~0UL >> (-(nbits) & (BITS_PER_LONG - 1)))
+#define _DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define BITS_TO_LONGS(nr)   _DIV_ROUND_UP(nr, BITS_PER_LONG)
+
+static inline void
+set_bit(unsigned int nr, volatile unsigned long *addr)
+{
+    unsigned long mask = BIT_MASK(nr);
+    unsigned long *p = ((unsigned long *)addr) + BIT_WORD(nr);
+
+    *p  |= mask;
+}
+
+static inline int
+test_bit(unsigned int nr, const volatile unsigned long *addr)
+{
+    return 1UL & (addr[BIT_WORD(nr)] >> (nr & (BITS_PER_LONG-1)));
+}
+
+static inline void bitmap_zero(unsigned long *dst, unsigned int nbits)
+{
+	unsigned int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
+	memset(dst, 0, len);
+}
+
+static inline void bitmap_copy(unsigned long *dst, const unsigned long *src,
+                               unsigned int nbits)
+{
+    unsigned int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
+    memcpy(dst, src, len);
+}
+
+static int bitmap_equal(const unsigned long *bitmap1,
+                        const unsigned long *bitmap2, unsigned int bits)
+{
+    unsigned int k, lim = bits/BITS_PER_LONG;
+    for (k = 0; k < lim; ++k)
+        if (bitmap1[k] != bitmap2[k])
+            return 0;
+
+    if (bits % BITS_PER_LONG)
+        if ((bitmap1[k] ^ bitmap2[k]) & BITMAP_LAST_WORD_MASK(bits))
+            return 0;
+
+    return 1;
+}
+
 /* Offset within a k-bit run. [0, bitsPerRun). */
 #define RUN_OFFSET(ix, bitsPerRun) ( (ix) % (bitsPerRun) )
-#define MASK_FOR(ix, bitsPerRun) ( BIT_SET(0, RUN_OFFSET(ix, bitsPerRun)) )
 /* Run number within a repeating sequence of k-bit runs. [0, nRuns). */
 #define RUN_NUMBER(ix, rleStart, bitsPerRun) ( ( (ix) - (rleStart) ) / (bitsPerRun) )
 
@@ -54,7 +101,7 @@ struct RLENode
 
     /* A bit representation of the run sequence.
      * We look at bits 0, 1, 2, 3, ... (right-to-left).  */
-    unsigned long long run; /* 64 bits -- does this need to be longer? */
+    unsigned long *run;
     int nBitsInRun; /* How many bits to look at */
 
     struct avl_tree_node node;
@@ -82,8 +129,9 @@ RLENode_contains(RLENode *node, int ix)
 static int
 RLENode_canMerge(RLENode *l, RLENode *r)
 {
-    return (l->run == r->run) && \
-                    RLENode_end(l) == r->offset;
+    assert(l->nBitsInRun == r->nBitsInRun);
+    return bitmap_equal(l->run, r->run, r->nBitsInRun) &&
+           RLENode_end(l) == r->offset;
 }
 
 /* Returns 0 if target's offset lies within curr. */
@@ -106,15 +154,29 @@ RLENode_avl_tree_cmp(const struct avl_tree_node *target, const struct avl_tree_n
 }
 
 static RLENode *
-RLENode_create(int offset, int nRuns, unsigned long long run, int nBitsInRun)
+RLENode_create(int offset, int nRuns, unsigned long *run, int nBitsInRun, int copy_run)
 {
     RLENode *node = PyObject_Malloc(sizeof *node);
     node->offset = offset;
     node->nRuns = nRuns;
-    node->run = run;
     node->nBitsInRun = nBitsInRun;
 
+    if (!copy_run)
+        node->run = run;
+    else {
+        node->run = PyObject_Malloc(
+            BITS_TO_LONGS(nBitsInRun) * sizeof(unsigned long));
+        bitmap_copy(node->run, run, nBitsInRun);
+    }
+
     return node;
+}
+
+static void
+RLENode_destroy(RLENode *node)
+{
+    PyObject_Free(node->run);
+    PyObject_Free(node);
 }
 
 /* External API: RLEVector */
@@ -131,17 +193,12 @@ struct RLEVector
 RLEVector *
 RLEVector_create(int runLength, int autoValidate)
 {
-    RLENode node;
     RLEVector *vec = PyObject_Malloc(sizeof *vec);
     vec->root = NULL;
     vec->currNEntries = 0;
     vec->mostNEntries = 0;
     vec->nBitsInRun = runLength;
 
-    if (runLength > 8 * sizeof(node.run)) {
-        logMsg(LOG_INFO, "RLEVector_create: Need %d bits, only have %llu", runLength, 8llu * sizeof(node.run));
-        vec->nBitsInRun = 1;
-    }
     vec->autoValidate = autoValidate;
 
     logMsg(LOG_VERBOSE, "RLEVector_create: vec %p nBitsInRun %d, autoValidate %d", vec, vec->nBitsInRun, vec->autoValidate);
@@ -172,10 +229,12 @@ _RLEVector_validate(RLEVector *vec)
         }
 
         while (prev != NULL && curr != NULL) {
-            logMsg(LOG_DEBUG, "rleVector_validate: prev (%d,%d,%llu) curr (%d,%d,%llu)", prev->offset, prev->nRuns, prev->run, curr->offset, curr->nRuns, curr->run);
+            logMsg(LOG_DEBUG, "rleVector_validate: prev (%d,%d,%lu) curr (%d,%d,%lu)", prev->offset, prev->nRuns, prev->run[0], curr->offset, curr->nRuns, curr->run[0]);
             assert(prev->offset < curr->offset); /* In-order */
             if (RLENode_end(prev) == curr->offset) {
-                if (prev->run == curr->run){
+                assert(prev->nBitsInRun == curr->nBitsInRun);
+                assert(vec->nBitsInRun == curr->nBitsInRun);
+                if (bitmap_equal(prev->run, curr->run, curr->nBitsInRun)){
                     /* Adjacent identical runs should have been merged */
                     assert(!"rleVector_validate: Adjacent identical runs are not merged");
                 }
@@ -250,8 +309,8 @@ _RLEVector_mergeNeighbors(RLEVector *vec, RLENodeNeighbors rnn)
 
         rnn.a->nRuns += rnn.b->nRuns;
 
-        logMsg(LOG_DEBUG, "merge: Removed (%d,%d), merged with now-(%d,%d,%llu)", rnn.b->offset, rnn.b->nRuns, rnn.a->offset, rnn.a->nRuns, rnn.a->run);
-        PyObject_Free(rnn.b);
+        logMsg(LOG_DEBUG, "merge: Removed (%d,%d), merged with now-(%d,%d,%lu)", rnn.b->offset, rnn.b->nRuns, rnn.a->offset, rnn.a->nRuns, rnn.a->run[0]);
+        RLENode_destroy(rnn.b);
 
         /* Set b to a, so that the next logic will work. */
         rnn.b = rnn.a;
@@ -260,9 +319,9 @@ _RLEVector_mergeNeighbors(RLEVector *vec, RLENodeNeighbors rnn)
         _RLEVector_removeRun(vec, rnn.c);
 
         rnn.b->nRuns += rnn.c->nRuns;
-        logMsg(LOG_DEBUG, "merge: Removed (%d,%d), merged with now-(%d,%d,%llu)", rnn.c->offset, rnn.c->nRuns, rnn.b->offset, rnn.b->nRuns, rnn.b->run);
+        logMsg(LOG_DEBUG, "merge: Removed (%d,%d), merged with now-(%d,%d,%lu)", rnn.c->offset, rnn.c->nRuns, rnn.b->offset, rnn.b->nRuns, rnn.b->run[0]);
 
-        PyObject_Free(rnn.c);
+        RLENode_destroy(rnn.c);
     }
 
     logMsg(LOG_DEBUG, "mergeNeighbors: before %d after %d", nBefore, vec->currNEntries);
@@ -285,7 +344,7 @@ RLEVector_set(RLEVector *vec, int ix)
 {
     RLENodeNeighbors rnn;
     RLENode *newRun = NULL;
-    int oldRunKernel = 0, newRunKernel = 0;
+    unsigned long *oldRunKernel, *newRunKernel;
     int roundedIx = ix - RUN_OFFSET(ix, vec->nBitsInRun);
 
     logMsg(LOG_VERBOSE, "RLEVector_set: %d", ix);
@@ -295,6 +354,9 @@ RLEVector_set(RLEVector *vec, int ix)
 
     assert(RLEVector_get(vec, ix) == 0); /* Shouldn't be set already */
 
+    newRunKernel = PyObject_Malloc(
+            BITS_TO_LONGS(vec->nBitsInRun) * sizeof(unsigned long));
+
     rnn = RLEVector_getNeighbors(vec, ix);
 
     /* Handle the "new" and "split" cases.
@@ -303,8 +365,9 @@ RLEVector_set(RLEVector *vec, int ix)
         /* Case: creates a run */
         logMsg(LOG_DEBUG, "%d: Creating a run", ix);
 
-        newRunKernel = MASK_FOR(ix, vec->nBitsInRun);
-        newRun = RLENode_create(roundedIx, 1, newRunKernel, vec->nBitsInRun);
+        bitmap_zero(newRunKernel, vec->nBitsInRun);
+        set_bit(RUN_OFFSET(ix, vec->nBitsInRun), newRunKernel);
+        newRun = RLENode_create(roundedIx, 1, newRunKernel, vec->nBitsInRun, 0);
 
         _RLEVector_addRun(vec, newRun);
         rnn.b = newRun;
@@ -313,19 +376,20 @@ RLEVector_set(RLEVector *vec, int ix)
         RLENode *prefixRun = NULL, *oldRun = NULL, *suffixRun = NULL;
         int ixRunNumber = 0, nRunsInPrefix = 0, nRunsInSuffix = 0;
 
-        logMsg(LOG_DEBUG, "%d: Splitting the run (%d,%d,%llu)", ix, rnn.b->offset, rnn.b->nRuns, rnn.b->run);
+        logMsg(LOG_DEBUG, "%d: Splitting the run (%d,%d,%lu)", ix, rnn.b->offset, rnn.b->nRuns, rnn.b->run[0]);
 
         /* Calculate the run kernels */
         oldRun = rnn.b;
         oldRunKernel = oldRun->run;
-        newRunKernel = oldRunKernel | MASK_FOR(ix, vec->nBitsInRun);
+        bitmap_copy(newRunKernel, oldRunKernel, vec->nBitsInRun);
+        set_bit(RUN_OFFSET(ix, vec->nBitsInRun), newRunKernel);
 
         /* Remove the affected run */
         _RLEVector_removeRun(vec, oldRun);
 
         /* Insert the new run */
         logMsg(LOG_DEBUG, "adding intercalary run");
-        newRun = RLENode_create(roundedIx, 1, newRunKernel, vec->nBitsInRun);
+        newRun = RLENode_create(roundedIx, 1, newRunKernel, vec->nBitsInRun, 0);
         _RLEVector_addRun(vec, newRun);
         rnn.b = newRun;
 
@@ -336,24 +400,26 @@ RLEVector_set(RLEVector *vec, int ix)
 
         if (nRunsInPrefix > 0) {
             logMsg(LOG_DEBUG, "adding prefix");
-            prefixRun = RLENode_create(oldRun->offset, nRunsInPrefix, oldRunKernel, vec->nBitsInRun);
+            prefixRun = RLENode_create(oldRun->offset, nRunsInPrefix,
+                                       oldRunKernel, vec->nBitsInRun, 1);
             _RLEVector_addRun(vec, prefixRun);
 
             rnn.a = prefixRun;
         }
         if (nRunsInSuffix > 0) {
             logMsg(LOG_DEBUG, "adding suffix");
-            suffixRun = RLENode_create(roundedIx + vec->nBitsInRun, nRunsInSuffix, oldRunKernel, vec->nBitsInRun);
+            suffixRun = RLENode_create(roundedIx + vec->nBitsInRun, nRunsInSuffix,
+                                       oldRunKernel, vec->nBitsInRun, 1);
             _RLEVector_addRun(vec, suffixRun);
 
             rnn.c = suffixRun;
         }
 
         /* Clean up */
-        PyObject_Free(oldRun);
+        RLENode_destroy(oldRun);
     }
 
-    logMsg(LOG_DEBUG, "Before merge: run is (%d,%d,%llu)", rnn.b->offset, rnn.b->nRuns, rnn.b->run);
+    logMsg(LOG_DEBUG, "Before merge: run is (%d,%d,%lu)", rnn.b->offset, rnn.b->nRuns, rnn.b->run[0]);
 
     _RLEVector_mergeNeighbors(vec, rnn);
     /* After merging, rnn.{a,b,c} is untrustworthy. */
@@ -386,7 +452,7 @@ RLEVector_get(RLEVector *vec, int ix)
     }
 
     logMsg(LOG_DEBUG, "match: %p", match);
-    return BIT_ISSET(match->run, ix % match->nBitsInRun);
+    return test_bit(RUN_OFFSET(ix, match->nBitsInRun), match->run);
 }
 
 int
@@ -414,7 +480,7 @@ RLEVector_destroy(RLEVector *vec)
 {
     RLENode *node = NULL;
     avl_tree_for_each_in_postorder(node, vec->root, RLENode, node)
-        PyObject_Free(node);
+        RLENode_destroy(node);
     PyObject_Free(vec);
 
     return;
@@ -422,7 +488,7 @@ RLEVector_destroy(RLEVector *vec)
 
 static void _RLEVector_addRun(RLEVector *vec, RLENode *node)
 {
-    logMsg(LOG_DEBUG, "Adding run (%d,%d,%llu)", node->offset, node->nRuns, node->run);
+    logMsg(LOG_DEBUG, "Adding run (%d,%d,%lu)", node->offset, node->nRuns, node->run[0]);
 
     struct avl_tree_node *insert =
         avl_tree_insert(&vec->root, &node->node, RLENode_avl_tree_cmp);
@@ -437,7 +503,7 @@ static void _RLEVector_addRun(RLEVector *vec, RLENode *node)
 
 static void _RLEVector_removeRun(RLEVector *vec, RLENode *node)
 {
-    logMsg(LOG_DEBUG, "Removing run (%d,%d,%llu)", node->offset, node->nRuns, node->run);
+    logMsg(LOG_DEBUG, "Removing run (%d,%d,%lu)", node->offset, node->nRuns, node->run[0]);
 
     avl_tree_remove(&vec->root, &node->node);
     vec->currNEntries--;
