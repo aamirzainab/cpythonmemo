@@ -471,6 +471,8 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->pos = start;
     state->endpos = end;
 
+    state->runlen = 1;
+
     return string;
   err:
     /* We add an explicit cast here because MSVC has a bug when
@@ -671,6 +673,7 @@ _sre.SRE_Pattern.fullmatch
     string: object
     pos: Py_ssize_t = 0
     endpos: Py_ssize_t(c_default="PY_SSIZE_T_MAX") = sys.maxsize
+    runlen: Py_ssize_t = 1
 
 Matches against all of the string.
 [clinic start generated code]*/
@@ -678,8 +681,8 @@ Matches against all of the string.
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos)
-/*[clinic end generated code: output=625b75b027ef94da input=50981172ab0fcfdd]*/
+                                Py_ssize_t endpos, Py_ssize_t runlen)
+/*[clinic end generated code: output=b5cbe7000203bdbc input=128889277ff7aecd]*/
 {
     _sremodulestate *module_state = get_sre_module_state_by_class(cls);
     SRE_STATE state;
@@ -688,6 +691,7 @@ _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
 
     if (!state_init(&state, self, string, pos, endpos))
         return NULL;
+    state.runlen = runlen;
 
     state.ptr = state.start;
 

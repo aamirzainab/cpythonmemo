@@ -192,7 +192,7 @@ exit:
 }
 
 PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
-"fullmatch($self, /, string, pos=0, endpos=sys.maxsize)\n"
+"fullmatch($self, /, string, pos=0, endpos=sys.maxsize, runlen=1)\n"
 "--\n"
 "\n"
 "Matches against all of the string.");
@@ -203,23 +203,24 @@ PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos);
+                                Py_ssize_t endpos, Py_ssize_t runlen);
 
 static PyObject *
 _sre_SRE_Pattern_fullmatch(PatternObject *self, PyTypeObject *cls, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"string", "pos", "endpos", NULL};
-    static _PyArg_Parser _parser = {"O|nn:fullmatch", _keywords, 0};
+    static const char * const _keywords[] = {"string", "pos", "endpos", "runlen", NULL};
+    static _PyArg_Parser _parser = {"O|nnn:fullmatch", _keywords, 0};
     PyObject *string;
     Py_ssize_t pos = 0;
     Py_ssize_t endpos = PY_SSIZE_T_MAX;
+    Py_ssize_t runlen = 1;
 
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &string, &pos, &endpos)) {
+        &string, &pos, &endpos, &runlen)) {
         goto exit;
     }
-    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos);
+    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos, runlen);
 
 exit:
     return return_value;
@@ -910,4 +911,4 @@ _sre_SRE_Scanner_search(ScannerObject *self, PyTypeObject *cls, PyObject *const 
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=518f7bb775c1184f input=a9049054013a1b77]*/
+/*[clinic end generated code: output=8b9c76795b0e79ae input=a9049054013a1b77]*/

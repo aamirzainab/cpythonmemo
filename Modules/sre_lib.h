@@ -251,7 +251,7 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
         if (!findp) return;
         memset(findp, 0, sizeof(simpos_t));
         findp->key.pattern = pattern;
-        findp->rle_vec = RLEVector_create(1, 0);
+        findp->rle_vec = RLEVector_create(state->runlen, 0);
         HASH_ADD(hh, *memo_table, key, sizeof(simpos_key_t), findp);
     }
     RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
