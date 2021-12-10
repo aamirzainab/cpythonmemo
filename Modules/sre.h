@@ -116,7 +116,7 @@ typedef struct {
 #define LOG_INFO       3
 #define LOG_VERBOSE    4
 #define LOG_DEBUG      5
-#define LOG_THRESHOLD  LOG_SILENT
+#define LOG_THRESHOLD  LOG_INFO
 
 #define logMsg(level, msg, ...) \
     do { \
