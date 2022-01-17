@@ -962,12 +962,14 @@ entrance:
             }
 
             /* match up to maximum number of times */
+            // TODO: handle memoization when pattern[2] is finite
             state->ptr = ctx->ptr;
             ret = SRE(count)(state, ctx->pattern+3,
                              ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT)
                              ? SRE_MAXREPEAT
                              : (Py_ssize_t) ctx->pattern[2] - (Py_ssize_t) ctx->pattern[1],
-                             ctx->should_memo ? &simpos_memo_table : NULL);
+                             ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
+                             ctx->should_memo) ? &simpos_memo_table : NULL);
             RETURN_ON_ERROR(ret);
             DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
             ctx->count += ret;
@@ -996,7 +998,8 @@ entrance:
                 for (;;) {
                     while (ctx->count >= (Py_ssize_t) ctx->pattern[1] &&
                            (ctx->ptr >= end || *ctx->ptr != ctx->u.chr)) {
-                        if (ctx->should_memo)
+                        if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
+                            ctx->should_memo)
                             SRE(simpos_record)(state, &simpos_memo_table,
                                                ctx->pattern, ctx->ptr);
                         ctx->ptr--;
@@ -1014,7 +1017,8 @@ entrance:
 
                     LASTMARK_RESTORE();
 
-                    if (ctx->should_memo)
+                    if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT
+                        && ctx->should_memo)
                         SRE(simpos_record)(state, &simpos_memo_table,
                                            ctx->pattern, ctx->ptr);
                     ctx->ptr--;
@@ -1031,7 +1035,8 @@ entrance:
                         RETURN_ON_ERROR(ret);
                         RETURN_SUCCESS;
                     }
-                    if (ctx->should_memo)
+                    if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
+                        ctx->should_memo)
                         SRE(simpos_record)(state, &simpos_memo_table,
                                            ctx->pattern, ctx->ptr);
                     ctx->ptr--;
@@ -1089,7 +1094,9 @@ entrance:
                 orig_ptr = ctx->ptr;
                 while ((Py_ssize_t)ctx->pattern[2] == SRE_MAXREPEAT
                        || ctx->count <= (Py_ssize_t)ctx->pattern[2]) {
-                    if (ctx->should_memo &&
+                    // TODO: handle memoization when pattern[2] is finite
+                    if ((Py_ssize_t)ctx->pattern[2] == SRE_MAXREPEAT &&
+                        ctx->should_memo &&
                         SRE(simpos_has_visited)(state, &simpos_memo_table,
                                                 ctx->pattern, ctx->ptr))
                         RETURN_FAILURE_NO_MEMO;
@@ -1181,7 +1188,9 @@ entrance:
                 RETURN_FAILURE_NO_MEMO;
             }
 
-            if (ctx->should_memo &&
+            // TODO: handle memoization when pattern[2] is finite
+            if (ctx->u.rep->pattern[2] == SRE_MAXREPEAT &&
+                ctx->should_memo &&
                 SRE(simpos_has_visited)(state, &simpos_memo_table,
                                         ctx->pattern, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
@@ -1249,7 +1258,9 @@ entrance:
                 RETURN_FAILURE_NO_MEMO;
             }
 
-            if (ctx->should_memo &&
+            // TODO: handle memoization when pattern[2] is finite
+            if (ctx->u.rep->pattern[2] == SRE_MAXREPEAT &&
+                ctx->should_memo &&
                 SRE(simpos_has_visited)(state, &simpos_memo_table,
                                         ctx->pattern, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
