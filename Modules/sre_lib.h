@@ -268,6 +268,8 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table) {
                cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
         logMsg(LOG_INFO, "|%p|maximum # of bytes = %d",
                cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
+        logMsg(LOG_INFO, "|%p|final # of runs = %d",
+               cur->key.pattern, RLEVector_currSize(cur->rle_vec));
         RLEVector_destroy(cur->rle_vec);
 #endif
         PyObject_Free(cur);
