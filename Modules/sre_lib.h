@@ -264,6 +264,8 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table) {
     HASH_ITER(hh, *memo_table, cur, tmp) {
         HASH_DEL(*memo_table, cur);
 #if 1
+        logMsg(LOG_INFO, "|%p|run length = %d",
+               cur->key.pattern, RLEVector_runSize(cur->rle_vec));
         logMsg(LOG_INFO, "|%p|maximum observed # of runs = %d",
                cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
         logMsg(LOG_INFO, "|%p|maximum # of bytes = %d",
