@@ -192,7 +192,8 @@ exit:
 }
 
 PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
-"fullmatch($self, /, string, pos=0, endpos=sys.maxsize, runlen=1)\n"
+"fullmatch($self, /, string, pos=0, endpos=sys.maxsize, runlen=1,\n"
+"          runlen1=1, runlen2=1)\n"
 "--\n"
 "\n"
 "Matches against all of the string.");
@@ -203,24 +204,27 @@ PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos, Py_ssize_t runlen);
+                                Py_ssize_t endpos, Py_ssize_t runlen,
+                                Py_ssize_t runlen1, Py_ssize_t runlen2);
 
 static PyObject *
 _sre_SRE_Pattern_fullmatch(PatternObject *self, PyTypeObject *cls, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"string", "pos", "endpos", "runlen", NULL};
-    static _PyArg_Parser _parser = {"O|nnn:fullmatch", _keywords, 0};
+    static const char * const _keywords[] = {"string", "pos", "endpos", "runlen", "runlen1", "runlen2", NULL};
+    static _PyArg_Parser _parser = {"O|nnnnn:fullmatch", _keywords, 0};
     PyObject *string;
     Py_ssize_t pos = 0;
     Py_ssize_t endpos = PY_SSIZE_T_MAX;
     Py_ssize_t runlen = 1;
+    Py_ssize_t runlen1 = 1;
+    Py_ssize_t runlen2 = 1;
 
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &string, &pos, &endpos, &runlen)) {
+        &string, &pos, &endpos, &runlen, &runlen1, &runlen2)) {
         goto exit;
     }
-    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos, runlen);
+    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos, runlen, runlen1, runlen2);
 
 exit:
     return return_value;
@@ -911,4 +915,4 @@ _sre_SRE_Scanner_search(ScannerObject *self, PyTypeObject *cls, PyObject *const 
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=8b9c76795b0e79ae input=a9049054013a1b77]*/
+/*[clinic end generated code: output=4953ab8e0591edd9 input=a9049054013a1b77]*/

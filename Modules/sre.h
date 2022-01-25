@@ -80,7 +80,8 @@ typedef struct {
     int match_all;
     int must_advance;
     /* RLE */
-    Py_ssize_t runlen;
+    Py_ssize_t runlen[10];
+    size_t runlen_idx;
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;

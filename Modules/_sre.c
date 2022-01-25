@@ -471,7 +471,9 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->pos = start;
     state->endpos = end;
 
-    state->runlen = 1;
+    for (size_t i = 0; i < 10; i++)
+        state->runlen[i] = 1;
+    state->runlen_idx = 0;
 
     return string;
   err:
@@ -674,6 +676,8 @@ _sre.SRE_Pattern.fullmatch
     pos: Py_ssize_t = 0
     endpos: Py_ssize_t(c_default="PY_SSIZE_T_MAX") = sys.maxsize
     runlen: Py_ssize_t = 1
+    runlen1: Py_ssize_t = 1
+    runlen2: Py_ssize_t = 1
 
 Matches against all of the string.
 [clinic start generated code]*/
@@ -681,8 +685,9 @@ Matches against all of the string.
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos, Py_ssize_t runlen)
-/*[clinic end generated code: output=b5cbe7000203bdbc input=128889277ff7aecd]*/
+                                Py_ssize_t endpos, Py_ssize_t runlen,
+                                Py_ssize_t runlen1, Py_ssize_t runlen2)
+/*[clinic end generated code: output=9756097f77f82e8b input=398d56b8fec7a579]*/
 {
     _sremodulestate *module_state = get_sre_module_state_by_class(cls);
     SRE_STATE state;
@@ -691,7 +696,9 @@ _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
 
     if (!state_init(&state, self, string, pos, endpos))
         return NULL;
-    state.runlen = runlen;
+    state.runlen[0] = runlen;
+    state.runlen[1] = runlen1;
+    state.runlen[2] = runlen2;
 
     state.ptr = state.start;
 
