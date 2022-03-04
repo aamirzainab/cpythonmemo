@@ -36,6 +36,10 @@ typedef struct {
     int flags; /* flags used when compiling pattern source */
     PyObject *weakreflist; /* List of weak references */
     int isbytes; /* pattern type (1 - bytes, 0 - string, -1 - None) */
+    /* RLE */
+    Py_ssize_t runlen;
+    Py_ssize_t final_n_runs;
+    Py_ssize_t max_n_runs;
     /* pattern code */
     Py_ssize_t codesize;
     SRE_CODE code[1];
@@ -81,7 +85,9 @@ typedef struct {
     int must_advance;
     /* RLE */
     Py_ssize_t runlen[10];
-    size_t runlen_idx;
+    Py_ssize_t runlen_idx;
+    Py_ssize_t final_n_runs;
+    Py_ssize_t max_n_runs;
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;
@@ -118,7 +124,7 @@ typedef struct {
 #define LOG_VERBOSE    4
 #define LOG_DEBUG      5
 
-#define LOG_THRESHOLD  LOG_INFO
+#define LOG_THRESHOLD  LOG_SILENT
 
 #define logMsg(level, msg, ...) \
     do { \

@@ -2445,6 +2445,10 @@ pattern_new_match(_sremodulestate* module_state,
     char* base;
     int n;
 
+    pattern->runlen = state->runlen[0];
+    pattern->final_n_runs = state->final_n_runs;
+    pattern->max_n_runs = state->max_n_runs;
+
     if (status > 0) {
 
         /* create match object (with room for extra group marks) */
@@ -2747,6 +2751,13 @@ static PyMemberDef pattern_members[] = {
     {"groups",     T_PYSSIZET,  PAT_OFF(groups),        READONLY,
      "The number of capturing groups in the pattern."},
     {"__weaklistoffset__", T_PYSSIZET, offsetof(PatternObject, weakreflist), READONLY},
+
+    {"runlen",       T_PYSSIZET, PAT_OFF(runlen),       READONLY,
+     "run length used in last match"},
+    {"final_n_runs", T_PYSSIZET, PAT_OFF(final_n_runs), READONLY,
+     "final # runs in last match"},
+    {"max_n_runs",   T_PYSSIZET, PAT_OFF(max_n_runs),   READONLY,
+     "max observed # runs in last match"},
     {NULL}  /* Sentinel */
 };
 

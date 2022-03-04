@@ -259,7 +259,7 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
 }
 
 LOCAL(void)
-SRE(free_simpos_memo_table)(simpos_t **memo_table) {
+SRE(free_simpos_memo_table)(simpos_t **memo_table, SRE_STATE* state) {
     simpos_t *cur, *tmp;
     HASH_ITER(hh, *memo_table, cur, tmp) {
         HASH_DEL(*memo_table, cur);
@@ -272,6 +272,10 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table) {
                cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
         logMsg(LOG_INFO, "|%p|final # of runs = %d",
                cur->key.pattern, RLEVector_currSize(cur->rle_vec));
+
+        state->max_n_runs = RLEVector_maxObservedSize(cur->rle_vec);
+        state->final_n_runs = RLEVector_currSize(cur->rle_vec);
+
         RLEVector_destroy(cur->rle_vec);
 #endif
         PyObject_Free(cur);
@@ -1477,7 +1481,7 @@ exit:
     if (ctx_pos == -1) {
         //TRACE(("memory overhead of memo table = %ld bytes\n",
         //       HASH_OVERHEAD(hh, simpos_memo_table)));
-        SRE(free_simpos_memo_table)(&simpos_memo_table);
+        SRE(free_simpos_memo_table)(&simpos_memo_table, state);
         return ret;
     }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
