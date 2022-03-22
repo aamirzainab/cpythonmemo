@@ -40,6 +40,9 @@ typedef struct {
     Py_ssize_t runlen;
     Py_ssize_t final_n_runs;
     Py_ssize_t max_n_runs;
+    Py_ssize_t runlen1;
+    Py_ssize_t final_n_runs1;
+    Py_ssize_t max_n_runs1;
     /* pattern code */
     Py_ssize_t codesize;
     SRE_CODE code[1];
@@ -86,8 +89,8 @@ typedef struct {
     /* RLE */
     Py_ssize_t runlen[10];
     Py_ssize_t runlen_idx;
-    Py_ssize_t final_n_runs;
-    Py_ssize_t max_n_runs;
+    Py_ssize_t final_n_runs[10];
+    Py_ssize_t max_n_runs[10];
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;

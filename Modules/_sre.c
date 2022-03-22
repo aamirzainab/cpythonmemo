@@ -2446,8 +2446,11 @@ pattern_new_match(_sremodulestate* module_state,
     int n;
 
     pattern->runlen = state->runlen[0];
-    pattern->final_n_runs = state->final_n_runs;
-    pattern->max_n_runs = state->max_n_runs;
+    pattern->final_n_runs = state->final_n_runs[0];
+    pattern->max_n_runs = state->max_n_runs[0];
+    pattern->runlen1 = state->runlen[1];
+    pattern->final_n_runs1 = state->final_n_runs[1];
+    pattern->max_n_runs1 = state->max_n_runs[1];
 
     if (status > 0) {
 
@@ -2757,6 +2760,12 @@ static PyMemberDef pattern_members[] = {
     {"final_n_runs", T_PYSSIZET, PAT_OFF(final_n_runs), READONLY,
      "final # runs in last match"},
     {"max_n_runs",   T_PYSSIZET, PAT_OFF(max_n_runs),   READONLY,
+     "max observed # runs in last match"},
+    {"runlen1",       T_PYSSIZET, PAT_OFF(runlen1),       READONLY,
+     "run length used in last match"},
+    {"final_n_runs1", T_PYSSIZET, PAT_OFF(final_n_runs1), READONLY,
+     "final # runs in last match"},
+    {"max_n_runs1",   T_PYSSIZET, PAT_OFF(max_n_runs1),   READONLY,
      "max observed # runs in last match"},
     {NULL}  /* Sentinel */
 };

@@ -261,6 +261,7 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
 LOCAL(void)
 SRE(free_simpos_memo_table)(simpos_t **memo_table, SRE_STATE* state) {
     simpos_t *cur, *tmp;
+    int i = 0;
     HASH_ITER(hh, *memo_table, cur, tmp) {
         HASH_DEL(*memo_table, cur);
 #if 1
@@ -273,8 +274,8 @@ SRE(free_simpos_memo_table)(simpos_t **memo_table, SRE_STATE* state) {
         logMsg(LOG_INFO, "|%p|final # of runs = %d",
                cur->key.pattern, RLEVector_currSize(cur->rle_vec));
 
-        state->max_n_runs = RLEVector_maxObservedSize(cur->rle_vec);
-        state->final_n_runs = RLEVector_currSize(cur->rle_vec);
+        state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
+        state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
 
         RLEVector_destroy(cur->rle_vec);
 #endif
