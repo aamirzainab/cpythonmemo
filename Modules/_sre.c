@@ -471,6 +471,7 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->pos = start;
     state->endpos = end;
 
+    state->simpos_memo_table = NULL;
     for (size_t i = 0; i < 10; i++)
         state->runlen[i] = 1;
     state->runlen_idx = 0;

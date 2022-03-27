@@ -69,6 +69,21 @@ typedef struct SRE_REPEAT_T {
 } SRE_REPEAT;
 
 typedef struct {
+    const SRE_CODE* pattern;
+#if 0
+    Py_ssize_t woffset;
+#endif
+} simpos_key_t;
+
+typedef struct {
+    simpos_key_t key;
+#if 1
+    RLEVector *rle_vec;
+#endif
+    UT_hash_handle hh;
+} simpos_t;
+
+typedef struct {
     /* string pointers */
     const void* ptr; /* current position (also end of current slice) */
     const void* beginning; /* start of original string */
@@ -87,6 +102,7 @@ typedef struct {
     int match_all;
     int must_advance;
     /* RLE */
+    simpos_t* simpos_memo_table;
     Py_ssize_t runlen[10];
     Py_ssize_t runlen_idx;
     Py_ssize_t final_n_runs[10];
@@ -104,21 +120,6 @@ typedef struct {
     PyObject* pattern;
     SRE_STATE state;
 } ScannerObject;
-
-typedef struct {
-    const SRE_CODE* pattern;
-#if 0
-    Py_ssize_t woffset;
-#endif
-} simpos_key_t;
-
-typedef struct {
-    simpos_key_t key;
-#if 1
-    RLEVector *rle_vec;
-#endif
-    UT_hash_handle hh;
-} simpos_t;
 
 #define LOG_SILENT     0
 #define LOG_ERROR      1

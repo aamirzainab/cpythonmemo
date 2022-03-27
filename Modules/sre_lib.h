@@ -200,7 +200,7 @@ SRE(charset_loc_ignore)(SRE_STATE* state, const SRE_CODE* set, SRE_CODE ch)
 }
 
 LOCAL(int)
-SRE(simpos_has_visited)(SRE_STATE *state, simpos_t **memo_table,
+SRE(simpos_has_visited)(SRE_STATE *state,
                         const SRE_CODE *pattern, const SRE_CHAR *ptr)
 {
 #if 0
@@ -217,17 +217,17 @@ SRE(simpos_has_visited)(SRE_STATE *state, simpos_t **memo_table,
     simpos_t s = { { .pattern = pattern } };
     simpos_t *findp;
 
-    HASH_FIND(hh, *memo_table, &s.key, sizeof(simpos_key_t), findp);
+    HASH_FIND(hh, state->simpos_memo_table, &s.key, sizeof(simpos_key_t), findp);
     if (!findp) return 0;
     return RLEVector_get(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
 #endif
 }
 
 LOCAL(void)
-SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
+SRE(simpos_record)(SRE_STATE *state,
                    const SRE_CODE *pattern, const SRE_CHAR *ptr)
 {
-    if (SRE(simpos_has_visited)(state, memo_table, pattern, ptr)) {
+    if (SRE(simpos_has_visited)(state, pattern, ptr)) {
         TRACE(("|%p|%p|simpos already in memo table\n", pattern, ptr));
         return;
     }
@@ -245,25 +245,27 @@ SRE(simpos_record)(SRE_STATE *state, simpos_t **memo_table,
     simpos_t s = { { .pattern = pattern } };
     simpos_t *findp;
 
-    HASH_FIND(hh, *memo_table, &s.key, sizeof(simpos_key_t), findp);
+    HASH_FIND(hh, state->simpos_memo_table, &s.key, sizeof(simpos_key_t), findp);
     if (!findp) {
         findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
         if (!findp) return;
         memset(findp, 0, sizeof(simpos_t));
         findp->key.pattern = pattern;
         findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
-        HASH_ADD(hh, *memo_table, key, sizeof(simpos_key_t), findp);
+        HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
+        //TRACE(("simpos_record: rle vector not found\n"));
+        //return;
     }
     RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
 #endif
 }
 
 LOCAL(void)
-SRE(free_simpos_memo_table)(simpos_t **memo_table, SRE_STATE* state) {
+SRE(free_simpos_memo_table)(SRE_STATE* state) {
     simpos_t *cur, *tmp;
     int i = 0;
-    HASH_ITER(hh, *memo_table, cur, tmp) {
-        HASH_DEL(*memo_table, cur);
+    HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
+        HASH_DEL(state->simpos_memo_table, cur);
 #if 1
         logMsg(LOG_INFO, "|%p|run length = %d",
                cur->key.pattern, RLEVector_runSize(cur->rle_vec));
@@ -287,7 +289,7 @@ LOCAL(Py_ssize_t) SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int topl
 
 LOCAL(Py_ssize_t)
 SRE(count)(SRE_STATE* state, const SRE_CODE* pattern, Py_ssize_t maxcount,
-           simpos_t **memo_table)
+           int check_memo_table)
 {
     SRE_CODE chr;
     SRE_CHAR c;
@@ -333,8 +335,8 @@ SRE(count)(SRE_STATE* state, const SRE_CODE* pattern, Py_ssize_t maxcount,
         else
 #endif
         while (ptr < end && *ptr == c &&
-               !(memo_table &&
-                 SRE(simpos_has_visited)(state, memo_table, pattern-3, ptr)))
+               !(check_memo_table &&
+                 SRE(simpos_has_visited)(state, pattern-3, ptr)))
             ptr++;
         break;
 
@@ -492,7 +494,7 @@ SRE(info)(SRE_STATE* state, const SRE_CODE* pattern)
 #define RETURN_FAILURE \
     do { \
         if (ctx->should_memo) \
-            SRE(simpos_record)(state, &simpos_memo_table, ctx->pattern, ctx->ptr); \
+            SRE(simpos_record)(state, ctx->pattern, ctx->ptr); \
         ret = 0; goto exit; \
     } while(0)
 #define RETURN_SUCCESS do { ret = 1; goto exit; } while(0)
@@ -650,7 +652,7 @@ SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel)
 
     SRE(match_context)* ctx;
     SRE(match_context)* nextctx;
-    simpos_t* simpos_memo_table = NULL;
+    //simpos_t* simpos_memo_table = NULL;
 
     TRACE(("|%p|%p|ENTER\n", pattern, state->ptr));
 
@@ -660,6 +662,24 @@ SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel)
     ctx->pattern = pattern;
     ctx->toplevel = toplevel;
     ctx_pos = alloc_pos;
+
+    //Py_ssize_t codesize = *(Py_ssize_t *)((void *)pattern - sizeof(Py_ssize_t));
+    //TRACE(("codesize = %ld\n", codesize));
+    //for (const SRE_CODE *p = pattern; p+1 < pattern + codesize; p++) {
+    //    if (p[0] == SRE_OP_MEMO &&
+    //            (p[1] == SRE_OP_MAX_UNTIL ||
+    //             p[1] == SRE_OP_MIN_UNTIL ||
+    //             p[1] == SRE_OP_MIN_REPEAT_ONE ||
+    //             p[1] == SRE_OP_REPEAT_ONE)) {
+    //        simpos_t *findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
+    //        if (!findp) return -1;
+    //        memset(findp, 0, sizeof(simpos_t));
+    //        findp->key.pattern = p+2;
+    //        TRACE(("|%p|creating rle vec\n", p+2));
+    //        findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
+    //        HASH_ADD(hh, simpos_memo_table, key, sizeof(simpos_key_t), findp);
+    //    }
+    //}
 
 entrance:
 
@@ -689,8 +709,7 @@ entrance:
                 ctx->pattern[1] != SRE_OP_REPEAT_ONE &&
                 ctx->pattern[1] != SRE_OP_MAX_UNTIL &&
                 ctx->pattern[1] != SRE_OP_MIN_UNTIL &&
-                SRE(simpos_has_visited)(state, &simpos_memo_table,
-                                        ctx->pattern+2, ctx->ptr))
+                SRE(simpos_has_visited)(state, ctx->pattern+2, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
             ctx->pattern++;
             ctx->should_memo = 1;
@@ -959,7 +978,7 @@ entrance:
             else {
                 state->ptr = ctx->ptr;
                 /* count using pattern min as the maximum */
-                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], NULL);
+                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], 0);
                 RETURN_ON_ERROR(ret);
                 DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
                 if (ret < (Py_ssize_t) ctx->pattern[1])
@@ -977,8 +996,8 @@ entrance:
                              ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT)
                              ? SRE_MAXREPEAT
                              : (Py_ssize_t) ctx->pattern[2] - (Py_ssize_t) ctx->pattern[1],
-                             ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
-                             ctx->should_memo) ? &simpos_memo_table : NULL);
+                             (Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
+                             ctx->should_memo);
             RETURN_ON_ERROR(ret);
             DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
             ctx->count += ret;
@@ -1009,8 +1028,7 @@ entrance:
                            (ctx->ptr >= end || *ctx->ptr != ctx->u.chr)) {
                         if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
                             ctx->should_memo)
-                            SRE(simpos_record)(state, &simpos_memo_table,
-                                               ctx->pattern, ctx->ptr);
+                            SRE(simpos_record)(state, ctx->pattern, ctx->ptr);
                         ctx->ptr--;
                         ctx->count--;
                     }
@@ -1028,8 +1046,7 @@ entrance:
 
                     if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT
                         && ctx->should_memo)
-                        SRE(simpos_record)(state, &simpos_memo_table,
-                                           ctx->pattern, ctx->ptr);
+                        SRE(simpos_record)(state, ctx->pattern, ctx->ptr);
                     ctx->ptr--;
                     ctx->count--;
                 }
@@ -1046,8 +1063,7 @@ entrance:
                     }
                     if ((Py_ssize_t) ctx->pattern[2] == SRE_MAXREPEAT &&
                         ctx->should_memo)
-                        SRE(simpos_record)(state, &simpos_memo_table,
-                                           ctx->pattern, ctx->ptr);
+                        SRE(simpos_record)(state, ctx->pattern, ctx->ptr);
                     ctx->ptr--;
                     ctx->count--;
                     LASTMARK_RESTORE();
@@ -1077,7 +1093,7 @@ entrance:
                 ctx->count = 0;
             else {
                 /* count using pattern min as the maximum */
-                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], NULL);
+                ret = SRE(count)(state, ctx->pattern+3, ctx->pattern[1], 0);
                 RETURN_ON_ERROR(ret);
                 DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
                 if (ret < (Py_ssize_t) ctx->pattern[1])
@@ -1106,8 +1122,7 @@ entrance:
                     // TODO: handle memoization when pattern[2] is finite
                     if ((Py_ssize_t)ctx->pattern[2] == SRE_MAXREPEAT &&
                         ctx->should_memo &&
-                        SRE(simpos_has_visited)(state, &simpos_memo_table,
-                                                ctx->pattern, ctx->ptr))
+                        SRE(simpos_has_visited)(state, ctx->pattern, ctx->ptr))
                         RETURN_FAILURE_NO_MEMO;
                     state->ptr = ctx->ptr;
                     DO_JUMP(JUMP_MIN_REPEAT_ONE,jump_min_repeat_one,
@@ -1117,7 +1132,7 @@ entrance:
                         RETURN_SUCCESS;
                     }
                     state->ptr = ctx->ptr;
-                    ret = SRE(count)(state, ctx->pattern+3, 1, NULL);
+                    ret = SRE(count)(state, ctx->pattern+3, 1, 0);
                     RETURN_ON_ERROR(ret);
                     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
                     if (ret == 0)
@@ -1130,7 +1145,7 @@ entrance:
             }
             if (ctx->should_memo) {
                 for (const SRE_CHAR *p = orig_ptr; p <= ctx->ptr; ++p) {
-                    SRE(simpos_record)(state, &simpos_memo_table, ctx->pattern, p);
+                    SRE(simpos_record)(state, ctx->pattern, p);
                 }
             }
             RETURN_FAILURE_NO_MEMO;
@@ -1200,8 +1215,7 @@ entrance:
             // TODO: handle memoization when pattern[2] is finite
             if (ctx->u.rep->pattern[2] == SRE_MAXREPEAT &&
                 ctx->should_memo &&
-                SRE(simpos_has_visited)(state, &simpos_memo_table,
-                                        ctx->pattern, ctx->ptr))
+                SRE(simpos_has_visited)(state, ctx->pattern, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
 
             if ((ctx->count < (Py_ssize_t) ctx->u.rep->pattern[2] ||
@@ -1270,8 +1284,7 @@ entrance:
             // TODO: handle memoization when pattern[2] is finite
             if (ctx->u.rep->pattern[2] == SRE_MAXREPEAT &&
                 ctx->should_memo &&
-                SRE(simpos_has_visited)(state, &simpos_memo_table,
-                                        ctx->pattern, ctx->ptr))
+                SRE(simpos_has_visited)(state, ctx->pattern, ctx->ptr))
                 RETURN_FAILURE_NO_MEMO;
 
             LASTMARK_SAVE();
@@ -1482,7 +1495,7 @@ exit:
     if (ctx_pos == -1) {
         //TRACE(("memory overhead of memo table = %ld bytes\n",
         //       HASH_OVERHEAD(hh, simpos_memo_table)));
-        SRE(free_simpos_memo_table)(&simpos_memo_table, state);
+        SRE(free_simpos_memo_table)(state);
         return ret;
     }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);
