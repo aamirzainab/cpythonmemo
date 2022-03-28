@@ -763,7 +763,7 @@ def dis(code):
     dis_(0, len(code))
 
 
-def compile(p, flags=0):
+def compile(p, flags=0, runlen=None):
     # internal: convert pattern list to internal format
 
     if isstring(p):
@@ -787,5 +787,6 @@ def compile(p, flags=0):
     return _sre.compile(
         pattern, flags | p.state.flags, code,
         p.state.groups-1,
-        groupindex, tuple(indexgroup)
+        groupindex, tuple(indexgroup),
+        runlen
         )

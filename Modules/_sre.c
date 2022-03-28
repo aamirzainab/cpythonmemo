@@ -472,9 +472,25 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->endpos = end;
 
     state->simpos_memo_table = NULL;
-    for (size_t i = 0; i < 10; i++)
-        state->runlen[i] = 1;
+    state->runlen[0] = pattern->runlen;
+    state->runlen[1] = pattern->runlen1;
     state->runlen_idx = 0;
+    for (const SRE_CODE *p = pattern->code;
+         p+1 < pattern->code + pattern->codesize && state->runlen_idx <= 1; p++) {
+        if (p[0] == SRE_OP_MEMO &&
+                (p[1] == SRE_OP_MAX_UNTIL ||
+                 p[1] == SRE_OP_MIN_UNTIL ||
+                 p[1] == SRE_OP_MIN_REPEAT_ONE ||
+                 p[1] == SRE_OP_REPEAT_ONE)) {
+            simpos_t *findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
+            if (!findp) goto err;
+            memset(findp, 0, sizeof(simpos_t));
+            findp->key.pattern = p+2;
+            TRACE(("|%p|creating rle vec\n", p+2));
+            findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
+            HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
+        }
+    }
 
     return string;
   err:
@@ -676,9 +692,6 @@ _sre.SRE_Pattern.fullmatch
     string: object
     pos: Py_ssize_t = 0
     endpos: Py_ssize_t(c_default="PY_SSIZE_T_MAX") = sys.maxsize
-    runlen: Py_ssize_t = 1
-    runlen1: Py_ssize_t = 1
-    runlen2: Py_ssize_t = 1
 
 Matches against all of the string.
 [clinic start generated code]*/
@@ -686,9 +699,8 @@ Matches against all of the string.
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos, Py_ssize_t runlen,
-                                Py_ssize_t runlen1, Py_ssize_t runlen2)
-/*[clinic end generated code: output=9756097f77f82e8b input=398d56b8fec7a579]*/
+                                Py_ssize_t endpos)
+/*[clinic end generated code: output=625b75b027ef94da input=50981172ab0fcfdd]*/
 {
     _sremodulestate *module_state = get_sre_module_state_by_class(cls);
     SRE_STATE state;
@@ -697,9 +709,9 @@ _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
 
     if (!state_init(&state, self, string, pos, endpos))
         return NULL;
-    state.runlen[0] = runlen;
-    state.runlen[1] = runlen1;
-    state.runlen[2] = runlen2;
+    //state.runlen[0] = runlen;
+    //state.runlen[1] = runlen1;
+    //state.runlen[2] = runlen2;
 
     state.ptr = state.start;
 
@@ -1413,14 +1425,15 @@ _sre.compile
     groups: Py_ssize_t
     groupindex: object(subclass_of='&PyDict_Type')
     indexgroup: object(subclass_of='&PyTuple_Type')
+    runlen: object = None
 
 [clinic start generated code]*/
 
 static PyObject *
 _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
                   PyObject *code, Py_ssize_t groups, PyObject *groupindex,
-                  PyObject *indexgroup)
-/*[clinic end generated code: output=ef9c2b3693776404 input=0a68476dbbe5db30]*/
+                  PyObject *indexgroup, PyObject *runlen)
+/*[clinic end generated code: output=2214e2271fff82d9 input=2758b84aafa367f8]*/
 {
     /* "compile" pattern descriptor to pattern object */
 
@@ -1493,6 +1506,20 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
     if (!_validate(self)) {
         Py_DECREF(self);
         return NULL;
+    }
+
+    self->runlen = 1;
+    self->runlen1 = 1;
+    if (runlen != Py_None) {
+        Py_ssize_t runlen_size = PyList_GET_SIZE(runlen);
+        if (runlen_size >= 1) {
+            PyObject *o = PyList_GET_ITEM(runlen, 0);
+            self->runlen = PyLong_AsSsize_t(o);
+        }
+        if (runlen_size >= 2) {
+            PyObject *o = PyList_GET_ITEM(runlen, 1);
+            self->runlen1 = PyLong_AsSsize_t(o);
+        }
     }
 
     return (PyObject*) self;
@@ -2446,10 +2473,10 @@ pattern_new_match(_sremodulestate* module_state,
     char* base;
     int n;
 
-    pattern->runlen = state->runlen[0];
+    //pattern->runlen = state->runlen[0];
     pattern->final_n_runs = state->final_n_runs[0];
     pattern->max_n_runs = state->max_n_runs[0];
-    pattern->runlen1 = state->runlen[1];
+    //pattern->runlen1 = state->runlen[1];
     pattern->final_n_runs1 = state->final_n_runs[1];
     pattern->max_n_runs1 = state->max_n_runs[1];
 

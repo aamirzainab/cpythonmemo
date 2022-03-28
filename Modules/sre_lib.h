@@ -247,14 +247,14 @@ SRE(simpos_record)(SRE_STATE *state,
 
     HASH_FIND(hh, state->simpos_memo_table, &s.key, sizeof(simpos_key_t), findp);
     if (!findp) {
-        findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
-        if (!findp) return;
-        memset(findp, 0, sizeof(simpos_t));
-        findp->key.pattern = pattern;
-        findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
-        HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
-        //TRACE(("simpos_record: rle vector not found\n"));
-        //return;
+        // findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
+        // if (!findp) return;
+        // memset(findp, 0, sizeof(simpos_t));
+        // findp->key.pattern = pattern;
+        // findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
+        // HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
+        logMsg(LOG_WARN, "simpos_record: rle vector not found");
+        return;
     }
     RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
 #endif
@@ -662,24 +662,6 @@ SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel)
     ctx->pattern = pattern;
     ctx->toplevel = toplevel;
     ctx_pos = alloc_pos;
-
-    //Py_ssize_t codesize = *(Py_ssize_t *)((void *)pattern - sizeof(Py_ssize_t));
-    //TRACE(("codesize = %ld\n", codesize));
-    //for (const SRE_CODE *p = pattern; p+1 < pattern + codesize; p++) {
-    //    if (p[0] == SRE_OP_MEMO &&
-    //            (p[1] == SRE_OP_MAX_UNTIL ||
-    //             p[1] == SRE_OP_MIN_UNTIL ||
-    //             p[1] == SRE_OP_MIN_REPEAT_ONE ||
-    //             p[1] == SRE_OP_REPEAT_ONE)) {
-    //        simpos_t *findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
-    //        if (!findp) return -1;
-    //        memset(findp, 0, sizeof(simpos_t));
-    //        findp->key.pattern = p+2;
-    //        TRACE(("|%p|creating rle vec\n", p+2));
-    //        findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
-    //        HASH_ADD(hh, simpos_memo_table, key, sizeof(simpos_key_t), findp);
-    //    }
-    //}
 
 entrance:
 

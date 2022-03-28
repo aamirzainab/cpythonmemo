@@ -224,9 +224,9 @@ def finditer(pattern, string, flags=0):
     Empty matches are included in the result."""
     return _compile(pattern, flags).finditer(string)
 
-def compile(pattern, flags=0):
+def compile(pattern, flags=0, runlen=None):
     "Compile a regular expression pattern, returning a Pattern object."
-    return _compile(pattern, flags)
+    return _compile(pattern, flags, runlen)
 
 def purge():
     "Clear the regular expression caches"
@@ -263,7 +263,7 @@ Match = type(sre_compile.compile('', 0).match(''))
 _cache = {}  # ordered!
 
 _MAXCACHE = 512
-def _compile(pattern, flags):
+def _compile(pattern, flags, runlen=None):
     # internal: compile pattern
     if isinstance(flags, RegexFlag):
         flags = flags.value
@@ -278,7 +278,7 @@ def _compile(pattern, flags):
         return pattern
     if not sre_compile.isstring(pattern):
         raise TypeError("first argument must be string or compiled pattern")
-    p = sre_compile.compile(pattern, flags)
+    p = sre_compile.compile(pattern, flags, runlen)
     if not (flags & DEBUG):
         if len(_cache) >= _MAXCACHE:
             # Drop the oldest item

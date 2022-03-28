@@ -192,8 +192,7 @@ exit:
 }
 
 PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
-"fullmatch($self, /, string, pos=0, endpos=sys.maxsize, runlen=1,\n"
-"          runlen1=1, runlen2=1)\n"
+"fullmatch($self, /, string, pos=0, endpos=sys.maxsize)\n"
 "--\n"
 "\n"
 "Matches against all of the string.");
@@ -204,27 +203,23 @@ PyDoc_STRVAR(_sre_SRE_Pattern_fullmatch__doc__,
 static PyObject *
 _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
                                 PyObject *string, Py_ssize_t pos,
-                                Py_ssize_t endpos, Py_ssize_t runlen,
-                                Py_ssize_t runlen1, Py_ssize_t runlen2);
+                                Py_ssize_t endpos);
 
 static PyObject *
 _sre_SRE_Pattern_fullmatch(PatternObject *self, PyTypeObject *cls, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"string", "pos", "endpos", "runlen", "runlen1", "runlen2", NULL};
-    static _PyArg_Parser _parser = {"O|nnnnn:fullmatch", _keywords, 0};
+    static const char * const _keywords[] = {"string", "pos", "endpos", NULL};
+    static _PyArg_Parser _parser = {"O|nn:fullmatch", _keywords, 0};
     PyObject *string;
     Py_ssize_t pos = 0;
     Py_ssize_t endpos = PY_SSIZE_T_MAX;
-    Py_ssize_t runlen = 1;
-    Py_ssize_t runlen1 = 1;
-    Py_ssize_t runlen2 = 1;
 
     if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
-        &string, &pos, &endpos, &runlen, &runlen1, &runlen2)) {
+        &string, &pos, &endpos)) {
         goto exit;
     }
-    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos, runlen, runlen1, runlen2);
+    return_value = _sre_SRE_Pattern_fullmatch_impl(self, cls, string, pos, endpos);
 
 exit:
     return return_value;
@@ -549,7 +544,7 @@ PyDoc_STRVAR(_sre_SRE_Pattern___deepcopy____doc__,
 
 PyDoc_STRVAR(_sre_compile__doc__,
 "compile($module, /, pattern, flags, code, groups, groupindex,\n"
-"        indexgroup)\n"
+"        indexgroup, runlen=None)\n"
 "--\n"
 "\n");
 
@@ -559,23 +554,25 @@ PyDoc_STRVAR(_sre_compile__doc__,
 static PyObject *
 _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
                   PyObject *code, Py_ssize_t groups, PyObject *groupindex,
-                  PyObject *indexgroup);
+                  PyObject *indexgroup, PyObject *runlen);
 
 static PyObject *
 _sre_compile(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    static const char * const _keywords[] = {"pattern", "flags", "code", "groups", "groupindex", "indexgroup", NULL};
+    static const char * const _keywords[] = {"pattern", "flags", "code", "groups", "groupindex", "indexgroup", "runlen", NULL};
     static _PyArg_Parser _parser = {NULL, _keywords, "compile", 0};
-    PyObject *argsbuf[6];
+    PyObject *argsbuf[7];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 6;
     PyObject *pattern;
     int flags;
     PyObject *code;
     Py_ssize_t groups;
     PyObject *groupindex;
     PyObject *indexgroup;
+    PyObject *runlen = Py_None;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 6, 6, 0, argsbuf);
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 6, 7, 0, argsbuf);
     if (!args) {
         goto exit;
     }
@@ -611,7 +608,12 @@ _sre_compile(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject
         goto exit;
     }
     indexgroup = args[5];
-    return_value = _sre_compile_impl(module, pattern, flags, code, groups, groupindex, indexgroup);
+    if (!noptargs) {
+        goto skip_optional_pos;
+    }
+    runlen = args[6];
+skip_optional_pos:
+    return_value = _sre_compile_impl(module, pattern, flags, code, groups, groupindex, indexgroup, runlen);
 
 exit:
     return return_value;
@@ -915,4 +917,4 @@ _sre_SRE_Scanner_search(ScannerObject *self, PyTypeObject *cls, PyObject *const 
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=4953ab8e0591edd9 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=c434845867c2d210 input=a9049054013a1b77]*/
