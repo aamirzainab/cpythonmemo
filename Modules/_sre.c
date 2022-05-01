@@ -476,7 +476,7 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->runlen[1] = pattern->runlen1;
     state->runlen_idx = 0;
     for (const SRE_CODE *p = pattern->code;
-         p+1 < pattern->code + pattern->codesize && state->runlen_idx <= 1; p++) {
+         p+1 < pattern->code + pattern->codesize; p++) {
         if (p[0] == SRE_OP_MEMO &&
                 (p[1] == SRE_OP_MAX_UNTIL ||
                  p[1] == SRE_OP_MIN_UNTIL ||
@@ -487,7 +487,9 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
             memset(findp, 0, sizeof(simpos_t));
             findp->key.pattern = p+2;
             TRACE(("|%p|creating rle vec\n", p+2));
-            findp->rle_vec = RLEVector_create(state->runlen[state->runlen_idx++], 0);
+            Py_ssize_t r = state->runlen_idx <= 1
+                ? state->runlen[state->runlen_idx++] : 1;
+            findp->rle_vec = RLEVector_create(r, 0);
             HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
         }
     }
