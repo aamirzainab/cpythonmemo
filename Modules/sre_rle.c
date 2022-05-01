@@ -186,6 +186,7 @@ struct RLEVector
     struct avl_tree_node *root;
     int currNEntries;
     int mostNEntries; /* High water mark */
+    int mostNEntriesAfterMerging; /* High water mark */
     int nBitsInRun; /* Length of the runs we encode */
     int autoValidate; /* Validate after every API usage. This can be wildly expensive. */
 };
@@ -197,6 +198,7 @@ RLEVector_create(int runLength, int autoValidate)
     vec->root = NULL;
     vec->currNEntries = 0;
     vec->mostNEntries = 0;
+    vec->mostNEntriesAfterMerging = 0;
     vec->nBitsInRun = runLength;
 
     vec->autoValidate = autoValidate;
@@ -324,7 +326,11 @@ _RLEVector_mergeNeighbors(RLEVector *vec, RLENodeNeighbors rnn)
         RLENode_destroy(rnn.c);
     }
 
-    logMsg(LOG_DEBUG, "mergeNeighbors: before %d after %d", nBefore, vec->currNEntries);
+    logMsg(LOG_VERBOSE, "mergeNeighbors: before %d after %d", nBefore, vec->currNEntries);
+
+    if (vec->mostNEntriesAfterMerging < vec->currNEntries) {
+        vec->mostNEntriesAfterMerging = vec->currNEntries;
+    }
 
     if (vec->autoValidate)
         _RLEVector_validate(vec);
@@ -464,7 +470,8 @@ RLEVector_currSize(RLEVector *vec)
 int
 RLEVector_maxObservedSize(RLEVector *vec)
 {
-    return vec->mostNEntries;
+    // return vec->mostNEntries;
+    return vec->mostNEntriesAfterMerging;
 }
 
 int
