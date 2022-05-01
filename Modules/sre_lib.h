@@ -276,8 +276,10 @@ SRE(free_simpos_memo_table)(SRE_STATE* state) {
         logMsg(LOG_INFO, "|%p|final # of runs = %d",
                cur->key.pattern, RLEVector_currSize(cur->rle_vec));
 
-        state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
-        state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
+        if (i < 10) {
+            state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
+            state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
+        }
 
         RLEVector_destroy(cur->rle_vec);
 #endif
