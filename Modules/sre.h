@@ -37,10 +37,11 @@ typedef struct {
     PyObject *weakreflist; /* List of weak references */
     int isbytes; /* pattern type (1 - bytes, 0 - string, -1 - None) */
     /* RLE */
-    Py_ssize_t runlen;
+    Py_ssize_t runlen_size;
+    Py_ssize_t runlen[200];
     Py_ssize_t final_n_runs;
     Py_ssize_t max_n_runs;
-    Py_ssize_t runlen1;
+    //Py_ssize_t runlen1;
     Py_ssize_t final_n_runs1;
     Py_ssize_t max_n_runs1;
     /* pattern code */
@@ -103,8 +104,8 @@ typedef struct {
     int must_advance;
     /* RLE */
     simpos_t* simpos_memo_table;
-    Py_ssize_t runlen[10];
-    Py_ssize_t runlen_idx;
+    //Py_ssize_t runlen[10];
+    //Py_ssize_t runlen_idx;
     Py_ssize_t final_n_runs[10];
     Py_ssize_t max_n_runs[10];
     /* dynamically allocated stuff */
@@ -128,7 +129,7 @@ typedef struct {
 #define LOG_VERBOSE    4
 #define LOG_DEBUG      5
 
-#define LOG_THRESHOLD  LOG_SILENT
+#define LOG_THRESHOLD  LOG_VERBOSE
 
 #define logMsg(level, msg, ...) \
     do { \
