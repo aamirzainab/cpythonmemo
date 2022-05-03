@@ -472,8 +472,6 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     state->endpos = end;
 
     state->simpos_memo_table = NULL;
-    //state->runlen[0] = pattern->runlen;
-    //state->runlen[1] = pattern->runlen1;
     Py_ssize_t runlen_idx = 0;
     pattern->tot_runlen_size = 0;
     for (const SRE_CODE *p = pattern->code;
@@ -715,9 +713,6 @@ _sre_SRE_Pattern_fullmatch_impl(PatternObject *self, PyTypeObject *cls,
 
     if (!state_init(&state, self, string, pos, endpos))
         return NULL;
-    //state.runlen[0] = runlen;
-    //state.runlen[1] = runlen1;
-    //state.runlen[2] = runlen2;
 
     state.ptr = state.start;
 
@@ -1418,6 +1413,28 @@ pattern_groupindex(PatternObject *self, void *Py_UNUSED(ignored))
     if (self->groupindex == NULL)
         return PyDict_New();
     return PyDictProxy_New(self->groupindex);
+}
+
+/* PatternObject's 'memostat' method. */
+static PyObject *
+pattern_memostat(PatternObject *self, void *Py_UNUSED(ignored))
+{
+    PyObject *dict = PyDict_New();
+    PyObject *list_runlen = PyList_New(self->tot_runlen_size);
+    PyObject *list_max    = PyList_New(self->tot_runlen_size);
+    PyObject *list_final  = PyList_New(self->tot_runlen_size);
+
+    for (Py_ssize_t i = 0; i < self->tot_runlen_size; i++) {
+        PyList_SET_ITEM(list_runlen, i, PyLong_FromSsize_t(self->runlen[i]));
+        PyList_SET_ITEM(list_max   , i, PyLong_FromSsize_t(self->max_n_runs[i]));
+        PyList_SET_ITEM(list_final , i, PyLong_FromSsize_t(self->final_n_runs[i]));
+    }
+
+    PyDict_SetItemString(dict, "runlen",       list_runlen);
+    PyDict_SetItemString(dict, "max_n_runs",   list_max);
+    PyDict_SetItemString(dict, "final_n_runs", list_final);
+
+    return dict;
 }
 
 static int _validate(PatternObject *self); /* Forward */
@@ -2774,6 +2791,8 @@ static PyMethodDef pattern_methods[] = {
 static PyGetSetDef pattern_getset[] = {
     {"groupindex", (getter)pattern_groupindex, (setter)NULL,
       "A dictionary mapping group names to group numbers."},
+    {"memostat", (getter)pattern_memostat, (setter)NULL,
+      "Memoization statistics."},
     {NULL}  /* Sentinel */
 };
 
@@ -2786,19 +2805,6 @@ static PyMemberDef pattern_members[] = {
     {"groups",     T_PYSSIZET,  PAT_OFF(groups),        READONLY,
      "The number of capturing groups in the pattern."},
     {"__weaklistoffset__", T_PYSSIZET, offsetof(PatternObject, weakreflist), READONLY},
-
-    //{"runlen",       T_PYSSIZET, PAT_OFF(runlen),       READONLY,
-    // "run length used in last match"},
-    //{"final_n_runs", T_PYSSIZET, PAT_OFF(final_n_runs), READONLY,
-    // "final # runs in last match"},
-    //{"max_n_runs",   T_PYSSIZET, PAT_OFF(max_n_runs),   READONLY,
-    // "max observed # runs in last match"},
-    //{"runlen1",       T_PYSSIZET, PAT_OFF(runlen1),       READONLY,
-    // "run length used in last match"},
-    //{"final_n_runs1", T_PYSSIZET, PAT_OFF(final_n_runs1), READONLY,
-    // "final # runs in last match"},
-    //{"max_n_runs1",   T_PYSSIZET, PAT_OFF(max_n_runs1),   READONLY,
-    // "max observed # runs in last match"},
     {NULL}  /* Sentinel */
 };
 
