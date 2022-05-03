@@ -26,6 +26,8 @@
 # define SRE_MAXGROUPS ((SRE_CODE)PY_SSIZE_T_MAX / SIZEOF_SIZE_T / 2)
 #endif
 
+#define SRE_RUNLEN_MAXSIZE 200
+
 typedef struct {
     PyObject_VAR_HEAD
     Py_ssize_t groups; /* must be first! */
@@ -37,13 +39,14 @@ typedef struct {
     PyObject *weakreflist; /* List of weak references */
     int isbytes; /* pattern type (1 - bytes, 0 - string, -1 - None) */
     /* RLE */
-    Py_ssize_t runlen_size;
-    Py_ssize_t runlen[200];
-    Py_ssize_t final_n_runs;
-    Py_ssize_t max_n_runs;
+    Py_ssize_t specified_runlen_size; /* specified by arg runlen of sre.compile() */
+    Py_ssize_t tot_runlen_size;
+    Py_ssize_t runlen[SRE_RUNLEN_MAXSIZE];
+    Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
+    Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
     //Py_ssize_t runlen1;
-    Py_ssize_t final_n_runs1;
-    Py_ssize_t max_n_runs1;
+    //Py_ssize_t final_n_runs1;
+    //Py_ssize_t max_n_runs1;
     /* pattern code */
     Py_ssize_t codesize;
     SRE_CODE code[1];
@@ -106,8 +109,8 @@ typedef struct {
     simpos_t* simpos_memo_table;
     //Py_ssize_t runlen[10];
     //Py_ssize_t runlen_idx;
-    Py_ssize_t final_n_runs[10];
-    Py_ssize_t max_n_runs[10];
+    Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
+    Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;
@@ -129,7 +132,7 @@ typedef struct {
 #define LOG_VERBOSE    4
 #define LOG_DEBUG      5
 
-#define LOG_THRESHOLD  LOG_VERBOSE
+#define LOG_THRESHOLD  LOG_WARN
 
 #define logMsg(level, msg, ...) \
     do { \

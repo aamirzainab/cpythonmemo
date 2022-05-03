@@ -475,6 +475,7 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     //state->runlen[0] = pattern->runlen;
     //state->runlen[1] = pattern->runlen1;
     Py_ssize_t runlen_idx = 0;
+    pattern->tot_runlen_size = 0;
     for (const SRE_CODE *p = pattern->code;
          p+1 < pattern->code + pattern->codesize; p++) {
         if (p[0] == SRE_OP_MEMO &&
@@ -487,12 +488,15 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
             memset(findp, 0, sizeof(simpos_t));
             findp->key.pattern = p+2;
             TRACE(("|%p|creating rle vec\n", p+2));
-            Py_ssize_t r = runlen_idx < pattern->runlen_size
+            Py_ssize_t r = runlen_idx < pattern->specified_runlen_size
                 ? pattern->runlen[runlen_idx++] : 1;
             findp->rle_vec = RLEVector_create(r, 0);
             HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
+            ++pattern->tot_runlen_size;
         }
     }
+    if (pattern->tot_runlen_size > SRE_RUNLEN_MAXSIZE)
+        logMsg(LOG_WARN, "tot_runlen_size > SRE_RUNLEN_MAXSIZE");
 
     return string;
   err:
@@ -1511,11 +1515,12 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
     }
 
     if (runlen == Py_None) {
-        self->runlen_size = 0;
+        self->specified_runlen_size = 0;
     } else {
         n = PyList_GET_SIZE(runlen);
-        self->runlen_size = n;
-        for (i = 0; i < n; i++) {
+        self->specified_runlen_size =
+            (n <= SRE_RUNLEN_MAXSIZE) ? n : SRE_RUNLEN_MAXSIZE;
+        for (i = 0; i < self->specified_runlen_size; i++) {
             PyObject *o = PyList_GET_ITEM(runlen, i);
             self->runlen[i] = PyLong_AsSsize_t(o);
         }
@@ -2472,12 +2477,12 @@ pattern_new_match(_sremodulestate* module_state,
     char* base;
     int n;
 
-    //pattern->runlen = state->runlen[0];
-    pattern->final_n_runs = state->final_n_runs[0];
-    pattern->max_n_runs = state->max_n_runs[0];
-    //pattern->runlen1 = state->runlen[1];
-    pattern->final_n_runs1 = state->final_n_runs[1];
-    pattern->max_n_runs1 = state->max_n_runs[1];
+    for (i = 0; i < pattern->tot_runlen_size; i++) {
+        if (i >= pattern->specified_runlen_size)
+            pattern->runlen[i] = 1;
+        pattern->final_n_runs[i] = state->final_n_runs[i];
+        pattern->max_n_runs[i] = state->max_n_runs[i];
+    }
 
     if (status > 0) {
 
@@ -2784,16 +2789,16 @@ static PyMemberDef pattern_members[] = {
 
     //{"runlen",       T_PYSSIZET, PAT_OFF(runlen),       READONLY,
     // "run length used in last match"},
-    {"final_n_runs", T_PYSSIZET, PAT_OFF(final_n_runs), READONLY,
-     "final # runs in last match"},
-    {"max_n_runs",   T_PYSSIZET, PAT_OFF(max_n_runs),   READONLY,
-     "max observed # runs in last match"},
+    //{"final_n_runs", T_PYSSIZET, PAT_OFF(final_n_runs), READONLY,
+    // "final # runs in last match"},
+    //{"max_n_runs",   T_PYSSIZET, PAT_OFF(max_n_runs),   READONLY,
+    // "max observed # runs in last match"},
     //{"runlen1",       T_PYSSIZET, PAT_OFF(runlen1),       READONLY,
     // "run length used in last match"},
-    {"final_n_runs1", T_PYSSIZET, PAT_OFF(final_n_runs1), READONLY,
-     "final # runs in last match"},
-    {"max_n_runs1",   T_PYSSIZET, PAT_OFF(max_n_runs1),   READONLY,
-     "max observed # runs in last match"},
+    //{"final_n_runs1", T_PYSSIZET, PAT_OFF(final_n_runs1), READONLY,
+    // "final # runs in last match"},
+    //{"max_n_runs1",   T_PYSSIZET, PAT_OFF(max_n_runs1),   READONLY,
+    // "max observed # runs in last match"},
     {NULL}  /* Sentinel */
 };
 
