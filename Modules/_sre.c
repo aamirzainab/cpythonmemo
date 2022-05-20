@@ -518,6 +518,13 @@ state_fini(SRE_STATE* state)
     /* See above PyMem_Del for why we explicitly cast here. */
     PyMem_Free((void*) state->mark);
     state->mark = NULL;
+
+    simpos_t *cur, *tmp;
+    HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
+        HASH_DEL(state->simpos_memo_table, cur);
+        RLEVector_destroy(cur->rle_vec);
+        PyObject_Free(cur);
+    }
 }
 
 /* calculate offset from start of string */
@@ -1421,18 +1428,18 @@ pattern_memostat(PatternObject *self, void *Py_UNUSED(ignored))
 {
     PyObject *dict = PyDict_New();
     PyObject *list_runlen = PyList_New(self->tot_runlen_size);
-    PyObject *list_max    = PyList_New(self->tot_runlen_size);
-    PyObject *list_final  = PyList_New(self->tot_runlen_size);
+    //PyObject *list_max    = PyList_New(self->tot_runlen_size);
+    //PyObject *list_final  = PyList_New(self->tot_runlen_size);
 
     for (Py_ssize_t i = 0; i < self->tot_runlen_size; i++) {
         PyList_SET_ITEM(list_runlen, i, PyLong_FromSsize_t(self->runlen[i]));
-        PyList_SET_ITEM(list_max   , i, PyLong_FromSsize_t(self->max_n_runs[i]));
-        PyList_SET_ITEM(list_final , i, PyLong_FromSsize_t(self->final_n_runs[i]));
+        //PyList_SET_ITEM(list_max   , i, PyLong_FromSsize_t(self->max_n_runs[i]));
+        //PyList_SET_ITEM(list_final , i, PyLong_FromSsize_t(self->final_n_runs[i]));
     }
 
     PyDict_SetItemString(dict, "runlen",       list_runlen);
-    PyDict_SetItemString(dict, "max_n_runs",   list_max);
-    PyDict_SetItemString(dict, "final_n_runs", list_final);
+    PyDict_SetItemString(dict, "max_n_runs",   self->max_n_runs);
+    PyDict_SetItemString(dict, "final_n_runs", self->final_n_runs);
 
     return dict;
 }
@@ -1542,6 +1549,8 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
             self->runlen[i] = PyLong_AsSsize_t(o);
         }
     }
+    self->final_n_runs = NULL;
+    self->max_n_runs = NULL;
 
     return (PyObject*) self;
 }
@@ -2497,8 +2506,23 @@ pattern_new_match(_sremodulestate* module_state,
     for (i = 0; i < pattern->tot_runlen_size; i++) {
         if (i >= pattern->specified_runlen_size)
             pattern->runlen[i] = 1;
-        pattern->final_n_runs[i] = state->final_n_runs[i];
-        pattern->max_n_runs[i] = state->max_n_runs[i];
+        //pattern->final_n_runs[i] = state->final_n_runs[i];
+        //pattern->max_n_runs[i] = state->max_n_runs[i];
+    }
+
+    Py_XDECREF(pattern->max_n_runs);
+    Py_XDECREF(pattern->final_n_runs);
+    pattern->max_n_runs   = PyList_New(pattern->tot_runlen_size);
+    pattern->final_n_runs = PyList_New(pattern->tot_runlen_size);
+
+    simpos_t *cur, *tmp;
+    i = 0;
+    HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
+        PyList_SET_ITEM(pattern->max_n_runs, i,
+                PyLong_FromSsize_t(RLEVector_maxObservedSize(cur->rle_vec)));
+        PyList_SET_ITEM(pattern->final_n_runs, i,
+                PyLong_FromSsize_t(RLEVector_currSize(cur->rle_vec)));
+        i++;
     }
 
     if (status > 0) {

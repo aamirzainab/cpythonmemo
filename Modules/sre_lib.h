@@ -219,7 +219,7 @@ SRE(simpos_has_visited)(SRE_STATE *state,
 
     HASH_FIND(hh, state->simpos_memo_table, &s.key, sizeof(simpos_key_t), findp);
     if (!findp) return 0;
-    return RLEVector_get(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
+    return RLEVector_get(findp->rle_vec, ptr - (const SRE_CHAR *)state->beginning);
 #endif
 }
 
@@ -256,36 +256,36 @@ SRE(simpos_record)(SRE_STATE *state,
         logMsg(LOG_WARN, "simpos_record: rle vector not found");
         return;
     }
-    RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->start);
+    RLEVector_set(findp->rle_vec, ptr - (const SRE_CHAR *)state->beginning);
 #endif
 }
 
-LOCAL(void)
-SRE(free_simpos_memo_table)(SRE_STATE* state) {
-    simpos_t *cur, *tmp;
-    int i = 0;
-    HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
-        HASH_DEL(state->simpos_memo_table, cur);
-#if 1
-        logMsg(LOG_INFO, "|%p|run length = %d",
-               cur->key.pattern, RLEVector_runSize(cur->rle_vec));
-        logMsg(LOG_INFO, "|%p|maximum observed # of runs = %d",
-               cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
-        logMsg(LOG_INFO, "|%p|maximum # of bytes = %d",
-               cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
-        logMsg(LOG_INFO, "|%p|final # of runs = %d",
-               cur->key.pattern, RLEVector_currSize(cur->rle_vec));
-
-        if (i < SRE_RUNLEN_MAXSIZE) {
-            state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
-            state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
-        }
-
-        RLEVector_destroy(cur->rle_vec);
-#endif
-        PyObject_Free(cur);
-    }
-}
+// LOCAL(void)
+// SRE(free_simpos_memo_table)(SRE_STATE* state) {
+//     simpos_t *cur, *tmp;
+//     //int i = 0;
+//     HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
+//         HASH_DEL(state->simpos_memo_table, cur);
+// #if 1
+//         logMsg(LOG_INFO, "|%p|run length = %d",
+//                cur->key.pattern, RLEVector_runSize(cur->rle_vec));
+//         logMsg(LOG_INFO, "|%p|maximum observed # of runs = %d",
+//                cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
+//         logMsg(LOG_INFO, "|%p|maximum # of bytes = %d",
+//                cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
+//         logMsg(LOG_INFO, "|%p|final # of runs = %d",
+//                cur->key.pattern, RLEVector_currSize(cur->rle_vec));
+// 
+//         //if (i < SRE_RUNLEN_MAXSIZE) {
+//         //    state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
+//         //    state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
+//         //}
+// 
+//         RLEVector_destroy(cur->rle_vec);
+// #endif
+//         PyObject_Free(cur);
+//     }
+// }
 
 LOCAL(Py_ssize_t) SRE(match)(SRE_STATE* state, const SRE_CODE* pattern, int toplevel);
 
@@ -1479,7 +1479,7 @@ exit:
     if (ctx_pos == -1) {
         //TRACE(("memory overhead of memo table = %ld bytes\n",
         //       HASH_OVERHEAD(hh, simpos_memo_table)));
-        SRE(free_simpos_memo_table)(state);
+        //SRE(free_simpos_memo_table)(state);
         return ret;
     }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);

@@ -42,8 +42,8 @@ typedef struct {
     Py_ssize_t specified_runlen_size; /* specified by arg runlen of sre.compile() */
     Py_ssize_t tot_runlen_size;
     Py_ssize_t runlen[SRE_RUNLEN_MAXSIZE];
-    Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
-    Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
+    PyObject *final_n_runs;
+    PyObject *max_n_runs;
     /* pattern code */
     Py_ssize_t codesize;
     SRE_CODE code[1];
@@ -104,8 +104,8 @@ typedef struct {
     int must_advance;
     /* RLE */
     simpos_t* simpos_memo_table;
-    Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
-    Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
+    //Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
+    //Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;
