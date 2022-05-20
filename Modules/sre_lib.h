@@ -675,7 +675,7 @@ entrance:
         if (ctx->pattern[3] && (uintptr_t)(end - ctx->ptr) < ctx->pattern[3]) {
             TRACE(("reject (got %zd chars, need %zd)\n",
                    end - ctx->ptr, (Py_ssize_t) ctx->pattern[3]));
-            RETURN_FAILURE;
+            RETURN_FAILURE_NO_MEMO;
         }
         ctx->pattern += ctx->pattern[1] + 1;
     }
