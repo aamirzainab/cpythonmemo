@@ -26,7 +26,7 @@
 # define SRE_MAXGROUPS ((SRE_CODE)PY_SSIZE_T_MAX / SIZEOF_SIZE_T / 2)
 #endif
 
-#define SRE_RUNLEN_MAXSIZE 200
+//#define SRE_RUNLEN_MAXSIZE 200
 
 typedef struct {
     PyObject_VAR_HEAD
@@ -41,7 +41,7 @@ typedef struct {
     /* RLE */
     Py_ssize_t specified_runlen_size; /* specified by arg runlen of sre.compile() */
     Py_ssize_t tot_runlen_size;
-    Py_ssize_t runlen[SRE_RUNLEN_MAXSIZE];
+    PyObject *runlen;
     PyObject *final_n_runs;
     PyObject *max_n_runs;
     /* pattern code */

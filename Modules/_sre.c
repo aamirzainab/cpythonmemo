@@ -487,14 +487,12 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
             findp->key.pattern = p+2;
             TRACE(("|%p|creating rle vec\n", p+2));
             Py_ssize_t r = runlen_idx < pattern->specified_runlen_size
-                ? pattern->runlen[runlen_idx++] : 1;
+                ? PyLong_AsSsize_t(PyList_GET_ITEM(pattern->runlen, runlen_idx++)) : 1;
             findp->rle_vec = RLEVector_create(r, 0);
             HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
-            ++pattern->tot_runlen_size;
+            pattern->tot_runlen_size++;
         }
     }
-    if (pattern->tot_runlen_size > SRE_RUNLEN_MAXSIZE)
-        logMsg(LOG_WARN, "tot_runlen_size > SRE_RUNLEN_MAXSIZE");
 
     return string;
   err:
@@ -1427,17 +1425,19 @@ static PyObject *
 pattern_memostat(PatternObject *self, void *Py_UNUSED(ignored))
 {
     PyObject *dict = PyDict_New();
-    PyObject *list_runlen = PyList_New(self->tot_runlen_size);
+    //PyObject *list_runlen = PyList_New(self->tot_runlen_size);
     //PyObject *list_max    = PyList_New(self->tot_runlen_size);
     //PyObject *list_final  = PyList_New(self->tot_runlen_size);
 
-    for (Py_ssize_t i = 0; i < self->tot_runlen_size; i++) {
-        PyList_SET_ITEM(list_runlen, i, PyLong_FromSsize_t(self->runlen[i]));
+    for (Py_ssize_t i = self->specified_runlen_size;
+            i < self->tot_runlen_size; i++) {
+        PyList_Append(self->runlen, PyLong_FromSsize_t(1));
+        //PyList_SET_ITEM(list_runlen, i, PyLong_FromSsize_t(self->runlen[i]));
         //PyList_SET_ITEM(list_max   , i, PyLong_FromSsize_t(self->max_n_runs[i]));
         //PyList_SET_ITEM(list_final , i, PyLong_FromSsize_t(self->final_n_runs[i]));
     }
 
-    PyDict_SetItemString(dict, "runlen",       list_runlen);
+    PyDict_SetItemString(dict, "runlen",       self->runlen);
     PyDict_SetItemString(dict, "max_n_runs",   self->max_n_runs);
     PyDict_SetItemString(dict, "final_n_runs", self->final_n_runs);
 
@@ -1540,14 +1540,11 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
 
     if (runlen == Py_None) {
         self->specified_runlen_size = 0;
+        self->runlen = PyList_New(0);
     } else {
-        n = PyList_GET_SIZE(runlen);
-        self->specified_runlen_size =
-            (n <= SRE_RUNLEN_MAXSIZE) ? n : SRE_RUNLEN_MAXSIZE;
-        for (i = 0; i < self->specified_runlen_size; i++) {
-            PyObject *o = PyList_GET_ITEM(runlen, i);
-            self->runlen[i] = PyLong_AsSsize_t(o);
-        }
+        self->specified_runlen_size = PyList_GET_SIZE(runlen);
+        Py_INCREF(runlen);
+        self->runlen = runlen;
     }
     self->final_n_runs = NULL;
     self->max_n_runs = NULL;
@@ -2503,12 +2500,12 @@ pattern_new_match(_sremodulestate* module_state,
     char* base;
     int n;
 
-    for (i = 0; i < pattern->tot_runlen_size; i++) {
-        if (i >= pattern->specified_runlen_size)
-            pattern->runlen[i] = 1;
-        //pattern->final_n_runs[i] = state->final_n_runs[i];
-        //pattern->max_n_runs[i] = state->max_n_runs[i];
-    }
+    //for (i = 0; i < pattern->tot_runlen_size; i++) {
+    //    if (i >= pattern->specified_runlen_size)
+    //        pattern->runlen[i] = 1;
+    //    //pattern->final_n_runs[i] = state->final_n_runs[i];
+    //    //pattern->max_n_runs[i] = state->max_n_runs[i];
+    //}
 
     Py_XDECREF(pattern->max_n_runs);
     Py_XDECREF(pattern->final_n_runs);
