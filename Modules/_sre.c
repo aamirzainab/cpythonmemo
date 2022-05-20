@@ -1425,16 +1425,10 @@ static PyObject *
 pattern_memostat(PatternObject *self, void *Py_UNUSED(ignored))
 {
     PyObject *dict = PyDict_New();
-    //PyObject *list_runlen = PyList_New(self->tot_runlen_size);
-    //PyObject *list_max    = PyList_New(self->tot_runlen_size);
-    //PyObject *list_final  = PyList_New(self->tot_runlen_size);
 
     for (Py_ssize_t i = self->specified_runlen_size;
             i < self->tot_runlen_size; i++) {
         PyList_Append(self->runlen, PyLong_FromSsize_t(1));
-        //PyList_SET_ITEM(list_runlen, i, PyLong_FromSsize_t(self->runlen[i]));
-        //PyList_SET_ITEM(list_max   , i, PyLong_FromSsize_t(self->max_n_runs[i]));
-        //PyList_SET_ITEM(list_final , i, PyLong_FromSsize_t(self->final_n_runs[i]));
     }
 
     PyDict_SetItemString(dict, "runlen",       self->runlen);
@@ -2499,13 +2493,6 @@ pattern_new_match(_sremodulestate* module_state,
     Py_ssize_t i, j;
     char* base;
     int n;
-
-    //for (i = 0; i < pattern->tot_runlen_size; i++) {
-    //    if (i >= pattern->specified_runlen_size)
-    //        pattern->runlen[i] = 1;
-    //    //pattern->final_n_runs[i] = state->final_n_runs[i];
-    //    //pattern->max_n_runs[i] = state->max_n_runs[i];
-    //}
 
     Py_XDECREF(pattern->max_n_runs);
     Py_XDECREF(pattern->final_n_runs);

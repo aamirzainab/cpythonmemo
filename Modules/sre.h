@@ -26,8 +26,6 @@
 # define SRE_MAXGROUPS ((SRE_CODE)PY_SSIZE_T_MAX / SIZEOF_SIZE_T / 2)
 #endif
 
-//#define SRE_RUNLEN_MAXSIZE 200
-
 typedef struct {
     PyObject_VAR_HEAD
     Py_ssize_t groups; /* must be first! */
@@ -104,8 +102,6 @@ typedef struct {
     int must_advance;
     /* RLE */
     simpos_t* simpos_memo_table;
-    //Py_ssize_t final_n_runs[SRE_RUNLEN_MAXSIZE];
-    //Py_ssize_t max_n_runs[SRE_RUNLEN_MAXSIZE];
     /* dynamically allocated stuff */
     char* data_stack;
     size_t data_stack_size;
