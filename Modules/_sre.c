@@ -1547,6 +1547,10 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
     if (runlen == Py_None) {
         self->specified_runlen_size = 0;
         self->runlen = PyList_New(0);
+        if (!self->runlen) {
+            Py_DECREF(self);
+            return NULL;
+        }
     } else {
         self->specified_runlen_size = PyList_GET_SIZE(runlen);
         Py_INCREF(runlen);
@@ -2507,7 +2511,9 @@ pattern_new_match(_sremodulestate* module_state,
     Py_XDECREF(pattern->max_n_runs);
     Py_XDECREF(pattern->final_n_runs);
     pattern->max_n_runs   = PyList_New(pattern->tot_runlen_size);
+    if (!pattern->max_n_runs) return NULL;
     pattern->final_n_runs = PyList_New(pattern->tot_runlen_size);
+    if (!pattern->final_n_runs) return NULL;
 
     simpos_t *cur, *tmp;
     i = 0;
