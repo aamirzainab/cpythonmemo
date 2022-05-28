@@ -602,6 +602,10 @@ pattern_traverse(PatternObject *self, visitproc visit, void *arg)
     Py_VISIT(self->groupindex);
     Py_VISIT(self->indexgroup);
     Py_VISIT(self->pattern);
+
+    Py_VISIT(self->runlen);
+    Py_VISIT(self->final_n_runs);
+    Py_VISIT(self->max_n_runs);
     return 0;
 }
 
@@ -611,6 +615,10 @@ pattern_clear(PatternObject *self)
     Py_CLEAR(self->groupindex);
     Py_CLEAR(self->indexgroup);
     Py_CLEAR(self->pattern);
+
+    Py_CLEAR(self->runlen);
+    Py_CLEAR(self->final_n_runs);
+    Py_CLEAR(self->max_n_runs);
     return 0;
 }
 
@@ -1475,6 +1483,10 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
     self->groupindex = NULL;
     self->indexgroup = NULL;
 
+    self->runlen = NULL;
+    self->final_n_runs = NULL;
+    self->max_n_runs = NULL;
+
     self->codesize = n;
 
     for (i = 0; i < n; i++) {
@@ -1540,8 +1552,6 @@ _sre_compile_impl(PyObject *module, PyObject *pattern, int flags,
         Py_INCREF(runlen);
         self->runlen = runlen;
     }
-    self->final_n_runs = NULL;
-    self->max_n_runs = NULL;
 
     return (PyObject*) self;
 }
