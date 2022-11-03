@@ -353,7 +353,7 @@ RLEVector_set(RLEVector *vec, int ix)
     unsigned long *oldRunKernel, *newRunKernel;
     int roundedIx = ix - RUN_OFFSET(ix, vec->nBitsInRun);
 
-    logMsg(LOG_VERBOSE, "RLEVector_set: %d", ix);
+    logMsg(LOG_VERBOSE, "RLEVector_set: vec %p, idx %d", vec, ix);
 
     if (vec->autoValidate)
         _RLEVector_validate(vec);
@@ -441,6 +441,7 @@ RLEVector_get(RLEVector *vec, int ix)
 {
     RLENode target;
     RLENode *match = NULL;
+    int ret;
 
     logMsg(LOG_DEBUG, "RLEVector_get: %d", ix);
 
@@ -454,11 +455,15 @@ RLEVector_get(RLEVector *vec, int ix)
             RLENode, node);
 
     if (match == NULL) {
+        logMsg(LOG_VERBOSE, "RLEVector_get: vec %p, idx %d, return 0", vec, ix);
         return 0;
     }
 
     logMsg(LOG_DEBUG, "match: %p", match);
-    return test_bit(RUN_OFFSET(ix, match->nBitsInRun), match->run);
+
+    ret = test_bit(RUN_OFFSET(ix, match->nBitsInRun), match->run);
+    logMsg(LOG_VERBOSE, "RLEVector_get: vec %p, idx %d, return %d", vec, ix, ret);
+    return ret;
 }
 
 int
