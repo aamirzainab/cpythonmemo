@@ -476,11 +476,12 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
     pattern->tot_runlen_size = 0;
     for (const SRE_CODE *p = pattern->code;
          p+1 < pattern->code + pattern->codesize; p++) {
-        if (p[0] == SRE_OP_MEMO &&
-                (p[1] == SRE_OP_MAX_UNTIL ||
-                 p[1] == SRE_OP_MIN_UNTIL ||
-                 p[1] == SRE_OP_MIN_REPEAT_ONE ||
-                 p[1] == SRE_OP_REPEAT_ONE)) {
+        // if (p[0] == SRE_OP_MEMO &&
+        //         (p[1] == SRE_OP_MAX_UNTIL ||
+        //          p[1] == SRE_OP_MIN_UNTIL ||
+        //          p[1] == SRE_OP_MIN_REPEAT_ONE ||
+        //          p[1] == SRE_OP_REPEAT_ONE)) {
+        if (p[0] == SRE_OP_MEMO){
             simpos_t *findp = (simpos_t*) PyObject_Malloc(sizeof(simpos_t));
             if (!findp) goto err;
             memset(findp, 0, sizeof(simpos_t));
@@ -488,6 +489,8 @@ state_init(SRE_STATE* state, PatternObject* pattern, PyObject* string,
             TRACE(("|%p|creating rle vec\n", p+2));
             Py_ssize_t r = runlen_idx < pattern->specified_runlen_size
                 ? PyLong_AsSsize_t(PyList_GET_ITEM(pattern->runlen, runlen_idx++)) : 1;
+            // logMsg(LOG_INFO,"ZAINAB: runLength: %zu\n Calling RLEVEector_create now..\n", r);
+            r = 7; 
             findp->rle_vec = RLEVector_create(r, 0);
             HASH_ADD(hh, state->simpos_memo_table, key, sizeof(simpos_key_t), findp);
             pattern->tot_runlen_size++;
@@ -519,11 +522,22 @@ state_fini(SRE_STATE* state)
 
     simpos_t *cur, *tmp;
     HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
+        // logMsg(LOG_VERBOSE, "ZAINAB: Running this for each state?\n");
+        // logMsg(LOG_VERBOSE, "ZAINAB: run length = %d",
+        //        RLEVector_runSize(cur->rle_vec));
+        // logMsg(LOG_VERBOSE, "ZAINAB: maximum observed # of runs = %d",
+        //         RLEVector_maxObservedSize(cur->rle_vec));
+        logMsg(LOG_INFO, "ZAINAB: maximum # of bytes = %d",
+               RLEVector_maxBytes(cur->rle_vec));
+        // logMsg(LOG_VERBOSE, "ZAINAB: final # of runs = %d",
+        //         RLEVector_currSize(cur->rle_vec));
+        // RLEVector_print(cur->rle_vec);
         HASH_DEL(state->simpos_memo_table, cur);
         RLEVector_destroy(cur->rle_vec);
         PyObject_Free(cur);
     }
 }
+
 
 /* calculate offset from start of string */
 #define STATE_OFFSET(state, member)\

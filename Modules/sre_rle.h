@@ -57,4 +57,7 @@ RLEVector_maxBytes(RLEVector *vec);
 void
 RLEVector_destroy(RLEVector *vec);
 
+void 
+RLEVector_print(RLEVector *vec);
+
 #endif /* RLE_H */

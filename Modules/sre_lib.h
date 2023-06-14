@@ -266,24 +266,21 @@ SRE(simpos_record)(SRE_STATE *state,
 //     //int i = 0;
 //     HASH_ITER(hh, state->simpos_memo_table, cur, tmp) {
 //         HASH_DEL(state->simpos_memo_table, cur);
-// #if 1
-//         logMsg(LOG_INFO, "|%p|run length = %d",
+//         logMsg(LOG_VERBOSE, "ZAINAB: |%p|run length = %d",
 //                cur->key.pattern, RLEVector_runSize(cur->rle_vec));
-//         logMsg(LOG_INFO, "|%p|maximum observed # of runs = %d",
+//         logMsg(LOG_VERBOSE, "ZAINAB: |%p|maximum observed # of runs = %d",
 //                cur->key.pattern, RLEVector_maxObservedSize(cur->rle_vec));
-//         logMsg(LOG_INFO, "|%p|maximum # of bytes = %d",
-//                cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
-//         logMsg(LOG_INFO, "|%p|final # of runs = %d",
+        // logMsg(LOG_VERBOSE, "ZAINAB: |%p|maximum # of bytes = %d",
+        //        cur->key.pattern, RLEVector_maxBytes(cur->rle_vec));
+//         logMsg(LOG_VERBOSE, "ZAINAB: |%p|final # of runs = %d",
 //                cur->key.pattern, RLEVector_currSize(cur->rle_vec));
-// 
+
 //         //if (i < SRE_RUNLEN_MAXSIZE) {
 //         //    state->max_n_runs[i] = RLEVector_maxObservedSize(cur->rle_vec);
 //         //    state->final_n_runs[i++] = RLEVector_currSize(cur->rle_vec);
 //         //}
-// 
-//         RLEVector_destroy(cur->rle_vec);
-// #endif
-//         PyObject_Free(cur);
+//         // RLEVector_destroy(cur->rle_vec);
+//         // PyObject_Free(cur);
 //     }
 // }
 
@@ -1479,7 +1476,7 @@ exit:
     if (ctx_pos == -1) {
         //TRACE(("memory overhead of memo table = %ld bytes\n",
         //       HASH_OVERHEAD(hh, simpos_memo_table)));
-        //SRE(free_simpos_memo_table)(state);
+        // SRE(free_simpos_memo_table)(state);
         return ret;
     }
     DATA_LOOKUP_AT(SRE(match_context), ctx, ctx_pos);

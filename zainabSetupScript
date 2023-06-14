@@ -1,0 +1,1 @@
+cd /home/zaamir/pythoninstallLOGSLOOP &&  sudo rm -r * && cd /home/zaamir/cpythonmemo/cpythonmemo && sudo ./configure --prefix=/home/zaamir/pythoninstallLOGSLOOP && sudo make && sudo make altinstall 

@@ -499,6 +499,21 @@ RLEVector_destroy(RLEVector *vec)
     return;
 }
 
+void 
+RLEVector_print(RLEVector *vec)
+{
+  RLENode *node = NULL;
+  avl_tree_for_each_in_postorder(node, vec->root, RLENode, node){
+    printf("\nZAINAB: Printing info for each node\n");
+    printf("\nZAINAB: this is the offset(string index) %d", node->offset);
+    printf("\nZAINAB: this is the nRuns of the node %d", node->nRuns);
+    printf("\nZAINAB: this is the nBitsinRun %d",node->nBitsInRun);
+    // printf("\nZAINAB: this is the run %llu\n",node->run);
+   }
+  printf("nZAINAB LOG MSG: We are exiting RLEVector_print\n");
+  return;
+}
+
 static void _RLEVector_addRun(RLEVector *vec, RLENode *node)
 {
     logMsg(LOG_DEBUG, "Adding run (%d,%d,%lu)", node->offset, node->nRuns, node->run[0]);
